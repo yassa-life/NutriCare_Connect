@@ -1,0 +1,203 @@
+openapi: 3.0.3
+info:
+  title: NutriCare Connect API
+  version: 1.0.0
+  description: Academic demonstration API. Health thresholds are non-diagnostic; payment, email and SMS are simulated.
+servers:
+  - url: http://localhost:8080/api/v1
+security:
+  - bearerAuth: []
+tags:
+  - { name: Access }
+  - { name: Appointments }
+  - { name: Health }
+  - { name: Diet }
+  - { name: Communication }
+  - { name: Analytics }
+paths:
+  /auth/register:
+    post:
+      tags: [Access]
+      security: []
+      summary: Register a user
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/RegisterRequest' } } } }
+      responses: { '201': { description: Account created }, '400': { $ref: '#/components/responses/BadRequest' } }
+  /auth/login:
+    post:
+      tags: [Access]
+      security: []
+      summary: Authenticate and issue a JWT
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [email,password], properties: { email: { type: string, format: email }, password: { type: string, format: password } } } } } }
+      responses: { '200': { description: JWT and user view }, '400': { $ref: '#/components/responses/BadRequest' } }
+  /users:
+    get: { tags: [Access], summary: List users, responses: { '200': { description: User views } } }
+  /users/{id}/unlock:
+    post:
+      tags: [Access]
+      summary: Unlock an account
+      parameters: [ { $ref: '#/components/parameters/Id' } ]
+      responses: { '200': { description: Updated user } }
+  /schedules/slots:
+    get:
+      tags: [Appointments]
+      summary: List slots for a date
+      parameters: [ { name: date, in: query, required: true, schema: { type: string, format: date } } ]
+      responses: { '200': { description: Availability slots } }
+  /appointments/hold:
+    post:
+      tags: [Appointments]
+      summary: Hold a slot for ten minutes and create an invoice
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/HoldRequest' } } } }
+      responses: { '201': { description: Booking, slot and invoice }, '409': { description: Slot conflict } }
+  /appointments/{id}/payments:
+    post:
+      tags: [Appointments]
+      summary: Save a simulated payment result
+      description: Card numbers and CVV fields are deliberately unsupported.
+      parameters: [ { $ref: '#/components/parameters/Id' } ]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/PaymentRequest' } } } }
+      responses: { '201': { description: Simulated payment record } }
+  /appointments/{id}/cancel:
+    post:
+      tags: [Appointments]
+      summary: Cancel and release a booking slot
+      parameters: [ { $ref: '#/components/parameters/Id' } ]
+      responses: { '200': { description: Cancelled } }
+  /appointments/patient/{id}:
+    get:
+      tags: [Appointments]
+      summary: List patient appointments
+      parameters: [ { $ref: '#/components/parameters/Id' } ]
+      responses: { '200': { description: Appointments } }
+  /checkups:
+    post:
+      tags: [Health]
+      summary: Record a health check and create threshold alerts
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/CheckRequest' } } } }
+      responses: { '201': { description: Check, alerts and disclaimer } }
+  /checkups/patient/{id}:
+    get:
+      tags: [Health]
+      summary: Get patient health history
+      parameters: [ { $ref: '#/components/parameters/Id' } ]
+      responses: { '200': { description: Health checks } }
+  /health-alerts:
+    get: { tags: [Health], summary: List open alerts, responses: { '200': { description: Alerts } } }
+  /diet-plans:
+    post:
+      tags: [Diet]
+      summary: Create a draft diet plan
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/DietPlanRequest' } } } }
+      responses: { '201': { description: Draft plan } }
+  /diet-plans/{id}/publish:
+    post:
+      tags: [Diet]
+      summary: Publish a plan
+      parameters: [ { $ref: '#/components/parameters/Id' } ]
+      responses: { '200': { description: Published plan } }
+  /diet-plans/patient/{id}:
+    get:
+      tags: [Diet]
+      summary: List patient plans
+      parameters: [ { $ref: '#/components/parameters/Id' } ]
+      responses: { '200': { description: Plans } }
+  /progress-logs:
+    post:
+      tags: [Diet]
+      summary: Record meals, water, weight and BMI
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/ProgressRequest' } } } }
+      responses: { '201': { description: Progress log } }
+  /progress-logs/patient/{id}:
+    get:
+      tags: [Diet]
+      summary: Return patient trend data
+      parameters: [ { $ref: '#/components/parameters/Id' } ]
+      responses: { '200': { description: Progress logs } }
+  /messages:
+    post:
+      tags: [Communication]
+      summary: Send a non-urgent secure message
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/MessageRequest' } } } }
+      responses: { '201': { description: Message } }
+  /messages/patient/{id}:
+    get:
+      tags: [Communication]
+      summary: Get patient-care conversation
+      parameters: [ { $ref: '#/components/parameters/Id' } ]
+      responses: { '200': { description: Messages } }
+  /notifications:
+    post:
+      tags: [Communication]
+      summary: Create an in-app or simulated external notification
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/NotificationRequest' } } } }
+      responses: { '201': { description: Notification delivery record } }
+  /notifications/recipient/{id}:
+    get:
+      tags: [Communication]
+      summary: Get recipient notifications
+      parameters: [ { $ref: '#/components/parameters/Id' } ]
+      responses: { '200': { description: Notifications } }
+  /feedback:
+    post:
+      tags: [Analytics]
+      summary: Save rating and automatically escalate low scores
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/FeedbackRequest' } } } }
+      responses: { '201': { description: Feedback and optional complaint } }
+  /complaints:
+    get: { tags: [Analytics], summary: List complaint tickets, responses: { '200': { description: Complaints } } }
+  /reports/summary:
+    get:
+      tags: [Analytics]
+      summary: Return date-filtered management summary
+      parameters:
+        - { name: from, in: query, required: true, schema: { type: string, format: date } }
+        - { name: to, in: query, required: true, schema: { type: string, format: date } }
+      responses: { '200': { description: Aggregate counts and average rating } }
+components:
+  securitySchemes:
+    bearerAuth: { type: http, scheme: bearer, bearerFormat: JWT }
+  parameters:
+    Id: { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+  responses:
+    BadRequest: { description: Validation or state rejection }
+  schemas:
+    RegisterRequest:
+      type: object
+      required: [fullName,email,password]
+      properties: { fullName: { type: string }, email: { type: string, format: email }, password: { type: string, minLength: 8 }, role: { type: string, default: PATIENT } }
+    HoldRequest:
+      type: object
+      required: [slotId,patientId,serviceType,amount]
+      properties: { slotId: { type: string, format: uuid }, patientId: { type: string, format: uuid }, serviceType: { type: string }, amount: { type: number, format: decimal, minimum: 0 } }
+    PaymentRequest:
+      type: object
+      required: [amount,method,status]
+      properties:
+        amount: { type: number, minimum: 0 }
+        method: { type: string, enum: [CARD,CASH,BANK_TRANSFER,MOBILE_WALLET] }
+        status: { type: string, enum: [PAID,PENDING,PARTIALLY_PAID,FAILED,REFUNDED] }
+    CheckRequest:
+      type: object
+      required: [patientId,practitionerId]
+      properties: { patientId: { type: string, format: uuid }, practitionerId: { type: string, format: uuid }, weightKg: { type: number }, bmi: { type: number }, systolic: { type: integer }, diastolic: { type: integer }, bloodSugar: { type: number }, temperature: { type: number }, notes: { type: string } }
+    DietPlanRequest:
+      type: object
+      required: [patientId,dietitianId,title,calorieTarget,mealSchedule]
+      properties: { patientId: { type: string, format: uuid }, dietitianId: { type: string, format: uuid }, title: { type: string }, calorieTarget: { type: integer }, exclusions: { type: string }, mealSchedule: { type: string } }
+    ProgressRequest:
+      type: object
+      required: [patientId,date]
+      properties: { patientId: { type: string, format: uuid }, dietPlanId: { type: string, format: uuid }, date: { type: string, format: date }, weightKg: { type: number }, bmi: { type: number }, waterGlasses: { type: integer }, mealsCompleted: { type: integer } }
+    MessageRequest:
+      type: object
+      required: [senderId,recipientId,patientId,body]
+      properties: { senderId: { type: string, format: uuid }, recipientId: { type: string, format: uuid }, patientId: { type: string, format: uuid }, body: { type: string, maxLength: 2000 } }
+    NotificationRequest:
+      type: object
+      required: [recipientId,type,channel,message]
+      properties: { recipientId: { type: string, format: uuid }, type: { type: string }, channel: { type: string, enum: [IN_APP,EMAIL,SMS] }, message: { type: string }, simulateFailure: { type: boolean } }
+    FeedbackRequest:
+      type: object
+      required: [patientId,practitionerId,appointmentId,rating]
+      properties: { patientId: { type: string, format: uuid }, practitionerId: { type: string, format: uuid }, appointmentId: { type: string, format: uuid }, rating: { type: integer, minimum: 1, maximum: 5 }, comments: { type: string, maxLength: 1500 } }
+

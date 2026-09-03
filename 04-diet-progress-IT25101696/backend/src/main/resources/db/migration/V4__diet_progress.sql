@@ -1,0 +1,3 @@
+CREATE TABLE diet_plans (id BINARY(16) PRIMARY KEY, patient_id BINARY(16) NOT NULL, dietitian_id BINARY(16) NOT NULL, title VARCHAR(150) NOT NULL, calorie_target INT, exclusions VARCHAR(500), meal_schedule VARCHAR(3000), status VARCHAR(20) NOT NULL, created_at TIMESTAMP(6) NOT NULL, INDEX idx_diet_patient(patient_id));
+CREATE TABLE progress_logs (id BINARY(16) PRIMARY KEY, patient_id BINARY(16) NOT NULL, diet_plan_id BINARY(16), log_date DATE NOT NULL, weight_kg DECIMAL(6,2), bmi DECIMAL(5,2), water_glasses INT, meals_completed INT, created_at TIMESTAMP(6) NOT NULL, INDEX idx_progress_patient(patient_id,log_date));
+

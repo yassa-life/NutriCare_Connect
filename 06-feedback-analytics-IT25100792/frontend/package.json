@@ -1,0 +1,1 @@
+{"name":"@nutricare/feedback-analytics","version":"1.0.0","type":"module","main":"src/index.ts","peerDependencies":{"react":"^19.0.0","recharts":"^2.15.0","lucide-react":"^0.468.0"}}

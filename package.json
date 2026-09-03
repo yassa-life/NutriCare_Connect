@@ -1,0 +1,20 @@
+{
+  "name": "nutricare-connect-workspace",
+  "private": true,
+  "version": "1.0.0",
+  "workspaces": [
+    "integration/frontend",
+    "01-user-access-IT25101803/frontend",
+    "02-appointment-billing-IT25103681/frontend",
+    "03-health-check-IT25102636/frontend",
+    "04-diet-progress-IT25101696/frontend",
+    "05-messaging-reminders-IT25103601/frontend",
+    "06-feedback-analytics-IT25100792/frontend"
+  ],
+  "scripts": {
+    "dev": "npm --workspace @nutricare/app run dev",
+    "build": "npm --workspace @nutricare/app run build",
+    "test": "npm --workspace @nutricare/app run test"
+  }
+}
+

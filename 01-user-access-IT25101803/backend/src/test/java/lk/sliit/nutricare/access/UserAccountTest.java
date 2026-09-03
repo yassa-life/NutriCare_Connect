@@ -1,0 +1,1 @@
+package lk.sliit.nutricare.access;import static org.junit.jupiter.api.Assertions.*;import org.junit.jupiter.api.Test;class UserAccountTest{@Test void locksAfterFiveFailures(){var u=new UserAccount("Test","test@example.lk","hash","PATIENT");for(int i=0;i<5;i++)u.failedLogin();assertTrue(u.isLocked());assertEquals(5,u.getFailedAttempts());}}

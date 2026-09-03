@@ -1,0 +1,31 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "useDefineForClassFields": true,
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "allowJs": false,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "strict": true,
+    "forceConsistentCasingInFileNames": true,
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "baseUrl": ".",
+    "ignoreDeprecations": "6.0",
+    "paths": {
+      "@nutricare/user-access": ["../../01-user-access-IT25101803/frontend/src/index.ts"],
+      "@nutricare/appointment-billing": ["../../02-appointment-billing-IT25103681/frontend/src/index.ts"],
+      "@nutricare/health-check": ["../../03-health-check-IT25102636/frontend/src/index.ts"],
+      "@nutricare/diet-progress": ["../../04-diet-progress-IT25101696/frontend/src/index.ts"],
+      "@nutricare/messaging-reminders": ["../../05-messaging-reminders-IT25103601/frontend/src/index.ts"],
+      "@nutricare/feedback-analytics": ["../../06-feedback-analytics-IT25100792/frontend/src/index.ts"]
+    },
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "jsx": "react-jsx"
+  },
+  "include": ["src", "../../0*/frontend/src"],
+  "references": []
+}

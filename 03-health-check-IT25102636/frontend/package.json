@@ -1,0 +1,1 @@
+{"name":"@nutricare/health-check","version":"1.0.0","type":"module","main":"src/index.ts","peerDependencies":{"react":"^19.0.0","lucide-react":"^0.468.0"}}

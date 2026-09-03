@@ -1,0 +1,29 @@
+{
+  "name": "@nutricare/app",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 0.0.0.0",
+    "build": "vite build",
+    "test": "vite build"
+  },
+  "dependencies": {
+    "@nutricare/user-access": "1.0.0",
+    "@nutricare/appointment-billing": "1.0.0",
+    "@nutricare/health-check": "1.0.0",
+    "@nutricare/diet-progress": "1.0.0",
+    "@nutricare/messaging-reminders": "1.0.0",
+    "@nutricare/feedback-analytics": "1.0.0",
+    "lucide-react": "^1.11.0",
+    "react": "^19.2.5",
+    "react-dom": "^19.2.5",
+    "recharts": "^3.8.1"
+  },
+  "devDependencies": {
+    "@types/react": "^19.1.10",
+    "@types/react-dom": "^19.1.7",
+    "typescript": "^6.0.3",
+    "vite": "^8.0.10"
+  }
+}

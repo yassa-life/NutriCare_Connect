@@ -1,0 +1,5 @@
+CREATE TABLE availability_slots (id BINARY(16) PRIMARY KEY, practitioner_id BINARY(16) NOT NULL, start_time DATETIME(6) NOT NULL, duration_minutes INT NOT NULL, status VARCHAR(20) NOT NULL, hold_expires_at TIMESTAMP(6) NULL, version BIGINT NOT NULL DEFAULT 0, CONSTRAINT uk_practitioner_slot UNIQUE (practitioner_id,start_time));
+CREATE TABLE appointments (id BINARY(16) PRIMARY KEY, slot_id BINARY(16) NOT NULL, patient_id BINARY(16) NOT NULL, practitioner_id BINARY(16) NOT NULL, service_type VARCHAR(80) NOT NULL, status VARCHAR(20) NOT NULL, created_at TIMESTAMP(6) NOT NULL, INDEX idx_appt_patient(patient_id));
+CREATE TABLE invoices (id BINARY(16) PRIMARY KEY, invoice_number VARCHAR(40) NOT NULL UNIQUE, appointment_id BINARY(16) NOT NULL UNIQUE, amount DECIMAL(12,2) NOT NULL, status VARCHAR(20) NOT NULL, created_at TIMESTAMP(6) NOT NULL);
+CREATE TABLE payments (id BINARY(16) PRIMARY KEY, invoice_id BINARY(16) NOT NULL, reference VARCHAR(40) NOT NULL, amount DECIMAL(12,2) NOT NULL, method VARCHAR(30) NOT NULL, status VARCHAR(30) NOT NULL, created_at TIMESTAMP(6) NOT NULL);
+

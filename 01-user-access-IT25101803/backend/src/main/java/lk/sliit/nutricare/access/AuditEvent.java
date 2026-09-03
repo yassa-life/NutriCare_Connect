@@ -1,0 +1,4 @@
+package lk.sliit.nutricare.access;
+import jakarta.persistence.*;import java.time.Instant;import java.util.UUID;
+@Entity @Table(name="audit_events") public class AuditEvent{@Id private UUID id;private UUID actorId;@Column(nullable=false)private String operation;@Column(nullable=false)private String entityType;private String entityId;@Column(nullable=false)private Instant occurredAt;protected AuditEvent(){}public AuditEvent(UUID actorId,String operation,String entityType,String entityId){this.id=UUID.randomUUID();this.actorId=actorId;this.operation=operation;this.entityType=entityType;this.entityId=entityId;this.occurredAt=Instant.now();}public UUID getId(){return id;}public UUID getActorId(){return actorId;}public String getOperation(){return operation;}public String getEntityType(){return entityType;}public String getEntityId(){return entityId;}public Instant getOccurredAt(){return occurredAt;}}
+

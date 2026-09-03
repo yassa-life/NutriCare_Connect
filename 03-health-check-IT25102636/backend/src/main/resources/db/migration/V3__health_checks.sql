@@ -1,0 +1,3 @@
+CREATE TABLE health_checks (id BINARY(16) PRIMARY KEY, patient_id BINARY(16) NOT NULL, practitioner_id BINARY(16) NOT NULL, weight_kg DECIMAL(6,2), bmi DECIMAL(5,2), systolic INT, diastolic INT, blood_sugar DECIMAL(7,2), temperature DECIMAL(4,2), notes VARCHAR(2000), recorded_at TIMESTAMP(6) NOT NULL, INDEX idx_health_patient(patient_id,recorded_at));
+CREATE TABLE health_alerts (id BINARY(16) PRIMARY KEY, health_check_id BINARY(16) NOT NULL, patient_id BINARY(16) NOT NULL, priority VARCHAR(20) NOT NULL, message VARCHAR(500) NOT NULL, status VARCHAR(20) NOT NULL, created_at TIMESTAMP(6) NOT NULL);
+
