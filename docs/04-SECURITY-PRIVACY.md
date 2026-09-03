@@ -4,11 +4,14 @@
 
 - BCrypt password hashing and constant-time JWT signature comparison.
 - Five-attempt account lock with administrator unlock operation.
-- Stateless bearer authentication and server-side role authorities.
+- Stateless bearer authentication, login/logout auditing and server-side role authorities.
+- Self-service updates for name, email, phone, date of birth and address; role and status remain administrator-controlled.
+- Administrative disable/enable lifecycle instead of deletion, with disabled tokens rejected on every request.
 - Request validation, bounded text fields, parameterized repository queries and transactional writes.
 - Booking row locks, optimistic versioning and a database uniqueness constraint.
 - Audit records for registration and login, with the extension point documented for all mutations.
 - CORS limited to the configured frontend origin.
+- Patient-only navigation assistant with an explicit non-diagnostic boundary.
 
 ## Role visibility
 
@@ -28,4 +31,3 @@ Never enter or persist real names tied to health data, national identifiers, rea
 ## Before any public demonstration
 
 Replace the JWT secret and default passwords, recreate the database from safe seed data, verify logs contain no confidential values, and keep the API/database on a private development network.
-

@@ -37,6 +37,8 @@ Requirements: Java 21+, Maven 3.9+, Node 20+, npm or pnpm, Docker Desktop.
 
 All seeded accounts use the password `password`; change this before any shared demonstration. The default database credentials are intentionally local-only.
 
+The sign-in screen provides fictional patient, clinical, reception, administration, management and finance accounts. A user's assigned role controls navigation and is never changed from the account menu. Users can edit their own contact profile and sign out; administrators can enable or disable accounts without deleting linked records. Patients also receive the non-diagnostic NutriGuide navigation assistant.
+
 ## Verification
 
 - Backend: `mvn test`

@@ -26,7 +26,7 @@ All six frontend modules inherit these tokens from `frontend/src/styles.css`. Fe
 - Cards use a consistent 12-17 px corner radius, green-tinted borders and restrained shadows.
 - Lucide icons are used across navigation, actions and feedback.
 - Keyboard focus is always visible with a high-contrast sage ring.
-- Role switching changes the available navigation to demonstrate role-based access without duplicating layouts.
+- The signed-in account's server-assigned role controls available navigation without duplicating layouts.
 
 ## Imagery
 

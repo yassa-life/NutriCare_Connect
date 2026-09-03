@@ -1,3 +1,58 @@
-package lk.sliit.nutricare.diet;import jakarta.validation.Valid;import jakarta.validation.constraints.*;import java.math.BigDecimal;import java.time.LocalDate;import java.util.*;import org.springframework.http.HttpStatus;import org.springframework.security.access.prepost.PreAuthorize;import org.springframework.web.bind.annotation.*;
-@RestController@RequestMapping("/api/v1")public class DietController{private final DietPlanRepository plans;private final ProgressLogRepository logs;DietController(DietPlanRepository p,ProgressLogRepository l){plans=p;logs=l;}@PostMapping("/diet-plans")@PreAuthorize("hasRole('DIETITIAN')")@ResponseStatus(HttpStatus.CREATED)DietPlan create(@Valid@RequestBody PlanRequest r){return plans.save(new DietPlan(r.patientId(),r.dietitianId(),r.title(),r.calorieTarget(),r.exclusions(),r.mealSchedule()));}@PostMapping("/diet-plans/{id}/publish")@PreAuthorize("hasRole('DIETITIAN')")DietPlan publish(@PathVariable UUID id){DietPlan p=plans.findById(id).orElseThrow();p.publish();return plans.save(p);}@GetMapping("/diet-plans/patient/{id}")@PreAuthorize("hasAnyRole('DIETITIAN','DOCTOR') or principal == #id")List<DietPlan>plans(@PathVariable UUID id){return plans.findByPatientIdOrderByCreatedAtDesc(id);}@PostMapping("/progress-logs")@PreAuthorize("hasRole('PATIENT') and principal == #r.patientId")@ResponseStatus(HttpStatus.CREATED)ProgressLog log(@Valid@RequestBody LogRequest r){return logs.save(new ProgressLog(r.patientId(),r.dietPlanId(),r.date(),r.weightKg(),r.bmi(),r.waterGlasses(),r.mealsCompleted()));}@GetMapping("/progress-logs/patient/{id}")@PreAuthorize("hasAnyRole('DIETITIAN','DOCTOR') or principal == #id")List<ProgressLog>progress(@PathVariable UUID id){return logs.findByPatientIdOrderByLogDateAsc(id);}record PlanRequest(@NotNull UUID patientId,@NotNull UUID dietitianId,@NotBlank String title,@Positive Integer calorieTarget,String exclusions,@NotBlank String mealSchedule){}record LogRequest(@NotNull UUID patientId,UUID dietPlanId,@NotNull LocalDate date,@Positive BigDecimal weightKg,@Positive BigDecimal bmi,@Min(0)@Max(30)Integer waterGlasses,@Min(0)Integer mealsCompleted){}
+package lk.sliit.nutricare.diet;
+
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.List;
+import java.util.UUID;
+import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.ResponseStatus;
+import org.springframework.web.bind.annotation.RestController;
+
+@RestController
+@RequestMapping("/api/v1")
+public class DietController {
+    private final DietPlanRepository plans;
+    private final ProgressLogRepository logs;
+
+    DietController(DietPlanRepository plans, ProgressLogRepository logs) { this.plans = plans; this.logs = logs; }
+
+    @PostMapping("/diet-plans")
+    @PreAuthorize("hasRole('DIETITIAN')")
+    @ResponseStatus(HttpStatus.CREATED)
+    DietPlan create(@Valid @RequestBody PlanRequest request) { return plans.save(new DietPlan(request.patientId(), request.dietitianId(), request.title(), request.calorieTarget(), request.exclusions(), request.mealSchedule())); }
+
+    @PostMapping("/diet-plans/{id}/publish")
+    @PreAuthorize("hasRole('DIETITIAN')")
+    DietPlan publish(@PathVariable UUID id) { DietPlan plan = plans.findById(id).orElseThrow(); plan.publish(); return plans.save(plan); }
+
+    @GetMapping("/diet-plans/patient/{id}")
+    @PreAuthorize("hasAnyRole('DIETITIAN','DOCTOR') or (hasRole('PATIENT') and principal == #id.toString())")
+    List<DietPlan> plans(@PathVariable UUID id) { return plans.findByPatientIdOrderByCreatedAtDesc(id); }
+
+    @PostMapping("/progress-logs")
+    @PreAuthorize("hasRole('PATIENT') and principal == #request.patientId.toString()")
+    @ResponseStatus(HttpStatus.CREATED)
+    ProgressLog log(@Valid @RequestBody LogRequest request) { return logs.save(new ProgressLog(request.patientId(), request.dietPlanId(), request.date(), request.weightKg(), request.bmi(), request.waterGlasses(), request.mealsCompleted())); }
+
+    @GetMapping("/progress-logs/patient/{id}")
+    @PreAuthorize("hasAnyRole('DIETITIAN','DOCTOR') or (hasRole('PATIENT') and principal == #id.toString())")
+    List<ProgressLog> progress(@PathVariable UUID id) { return logs.findByPatientIdOrderByLogDateAsc(id); }
+
+    record PlanRequest(@NotNull UUID patientId, @NotNull UUID dietitianId, @NotBlank String title,
+                       @Positive Integer calorieTarget, String exclusions, @NotBlank String mealSchedule) {}
+    record LogRequest(@NotNull UUID patientId, UUID dietPlanId, @NotNull LocalDate date,
+                      @Positive BigDecimal weightKg, @Positive BigDecimal bmi,
+                      @Min(0) @Max(30) Integer waterGlasses, @Min(0) Integer mealsCompleted) {}
 }

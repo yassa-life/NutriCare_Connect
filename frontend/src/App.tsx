@@ -4,7 +4,6 @@ import {
   ArrowUpRight,
   Bell,
   CalendarDays,
-  ChevronDown,
   ClipboardList,
   HeartHandshake,
   LayoutDashboard,
@@ -12,10 +11,13 @@ import {
   Menu,
   MessageCircle,
   Search,
+  Settings,
   ShieldCheck,
   Star,
   X,
 } from "lucide-react";
+import { LoginScreen, PatientGuide, ProfileModal } from "./AccountExperience";
+import { logout, Role, Session } from "./api";
 const UserAccessFeature = lazy(() => import("@nutricare/user-access").then((module) => ({ default: module.UserAccessFeature })));
 const AppointmentBillingFeature = lazy(() => import("@nutricare/appointment-billing").then((module) => ({ default: module.AppointmentBillingFeature })));
 const HealthCheckFeature = lazy(() => import("@nutricare/health-check").then((module) => ({ default: module.HealthCheckFeature })));
@@ -24,7 +26,6 @@ const MessagingRemindersFeature = lazy(() => import("@nutricare/messaging-remind
 const FeedbackAnalyticsFeature = lazy(() => import("@nutricare/feedback-analytics").then((module) => ({ default: module.FeedbackAnalyticsFeature })));
 
 type Page = "overview" | "users" | "appointments" | "health" | "diet" | "messages" | "analytics";
-type Role = "DIETITIAN" | "DOCTOR" | "RECEPTION_STAFF" | "SYSTEM_ADMIN" | "OPERATIONS_MANAGER" | "FINANCE_EXECUTIVE" | "MEDICAL_CENTER_COORDINATOR" | "PATIENT_RELATIONS_OFFICER" | "PATIENT";
 
 const nav = [
   { id: "overview" as Page, label: "Overview", icon: LayoutDashboard },
@@ -67,8 +68,17 @@ const quickStats = [
   ["Plan adherence", "84%", "+6% this month", "fern"],
 ] as const;
 
+function PatientOverview({ go }: { go: (page: Page) => void }) {
+  return <div className="stack-xl">
+    <section className="welcome"><div><span className="eyebrow">Thursday, 3 September</span><h1>Good morning, Amal.</h1><p>Your next check-up and today’s nutrition plan are ready.</p></div><div className="welcome-actions"><span className="live-pill"><i/> Personal care space</span><button className="primary" onClick={() => go("appointments")}><CalendarDays size={18}/> Book a check-up</button></div></section>
+    <section className="stat-grid" aria-label="My care summary"><article className="stat-card sage"><span>Next appointment</span><strong>10:30</strong><small>Tomorrow · Diet follow-up</small></article><article className="stat-card eucalyptus"><span>Water today</span><strong>5 / 8</strong><small>Three glasses remaining</small></article><article className="stat-card amber"><span>Plan tasks</span><strong>2</strong><small>Lunch and dinner remaining</small></article><article className="stat-card fern"><span>My adherence</span><strong>84%</strong><small>+6% this month</small></article></section>
+    <div className="dashboard-grid"><section className="panel span-2"><div className="panel-title"><div><span className="eyebrow">My next visit</span><h2>Diet follow-up with Ishara Jayasinghe</h2></div><span className="status confirmed">Confirmed</span></div><div className="appointment-focus"><span className="calendar-date"><b>04</b><small>SEP</small></span><div><strong>10:30 AM · NutriCare Colombo</strong><p>Bring your latest food log. You can reschedule from Appointments.</p></div><button className="secondary" onClick={() => go("appointments")}>View appointment</button></div></section><section className="panel tip-card"><Leaf size={22}/><div><span className="eyebrow">Today’s plan</span><h2>Low-sugar balanced plan</h2><p>Breakfast completed. Lunch is scheduled for 12:30.</p><button className="text-button" onClick={() => go("diet")}>Open my plan</button></div></section><section className="panel span-2"><div className="panel-title"><div><span className="eyebrow">My recent check</span><h2>Personal health summary</h2></div><button className="text-button" onClick={() => go("health")}>View my records</button></div><div className="metric-row"><article className="metric"><span>Weight</span><strong>74 kg</strong></article><article className="metric"><span>BMI</span><strong>26.4</strong></article><article className="metric"><span>Recorded</span><strong>31 Aug</strong></article></div><div className="patient-safety-note"><ShieldCheck size={16}/> Only you and authorized members of your care team can see these records.</div></section><section className="panel care-pulse"><div className="care-ring"><span><b>84%</b><small>on plan</small></span></div><div><span className="eyebrow">My progress</span><h2>Keep the momentum</h2><p>You completed ten weekly goals this month.</p></div></section></div>
+  </div>;
+}
+
 function Overview({ go, role }: { go: (page: Page) => void; role: Role }) {
   const patientView = role === "PATIENT";
+  if (patientView) return <PatientOverview go={go}/>;
   return (
     <div className="stack-xl">
       <section className="welcome">
@@ -127,14 +137,24 @@ function Overview({ go, role }: { go: (page: Page) => void; role: Role }) {
 }
 
 export function App() {
+  const [session, setSession] = useState<Session | null>(null);
   const [page, setPage] = useState<Page>("overview");
   const [menuOpen, setMenuOpen] = useState(false);
-  const [role, setRole] = useState<Role>("DIETITIAN");
+  const [accountOpen, setAccountOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
+  const role = session?.user.role ?? "PATIENT";
   const visibleNav = useMemo(() => nav.filter((item) => rolePages[role].includes(item.id)), [role]);
   const current = nav.find((item) => item.id === page) ?? nav[0];
   useEffect(() => {
     if (!rolePages[role].includes(page)) setPage("overview");
   }, [page, role]);
+  if (!session) return <LoginScreen onLogin={setSession}/>;
+  async function signOut() {
+    await logout(session!);
+    setAccountOpen(false);
+    setSession(null);
+    setPage("overview");
+  }
   return (
     <div className="app-shell">
       <aside className={menuOpen ? "sidebar open" : "sidebar"}>
@@ -151,21 +171,23 @@ export function App() {
           <div className="topbar-actions">
             <label className="search"><Search size={17} /><input aria-label="Search patients" placeholder="Search patients…" /></label>
             <button className="icon notify" aria-label="Notifications"><Bell size={19} /><span /></button>
-            <label className="role-select"><span className="avatar">I</span><select value={role} onChange={(e) => setRole(e.target.value as Role)} aria-label="Demo role">{Object.entries(roleLabels).map(([value, label]) => <option value={value} key={value}>{label}</option>)}</select><ChevronDown size={14} /></label>
+            <div className="account-area"><button className="account-trigger" onClick={() => setAccountOpen((value) => !value)} aria-expanded={accountOpen}><span className="avatar">{session.user.fullName[0]}</span><span><strong>{session.user.fullName}</strong><small>{roleLabels[role]}</small></span></button>{accountOpen && <div className="account-menu"><button onClick={() => { setProfileOpen(true); setAccountOpen(false); }}><Settings size={16}/><span><strong>Edit profile</strong><small>Name, phone and contact details</small></span></button><button onClick={signOut}><X size={16}/><span><strong>Sign out</strong><small>End this session safely</small></span></button></div>}</div>
           </div>
         </header>
         <div className="content">
           <Suspense fallback={<section className="panel empty">Preparing your care workspace…</section>}>
             {page === "overview" && <Overview go={setPage} role={role} />}
-            {page === "users" && <UserAccessFeature />}
+            {page === "users" && <UserAccessFeature isAdmin={role === "SYSTEM_ADMIN"} />}
             {page === "appointments" && <AppointmentBillingFeature />}
             {page === "health" && <HealthCheckFeature />}
             {page === "diet" && <DietProgressFeature />}
             {page === "messages" && <MessagingRemindersFeature />}
-            {page === "analytics" && <FeedbackAnalyticsFeature />}
+            {page === "analytics" && <FeedbackAnalyticsFeature patientOnly={role === "PATIENT"} />}
           </Suspense>
         </div>
       </main>
+      {profileOpen && <ProfileModal session={session} onClose={() => setProfileOpen(false)} onChange={setSession}/>} 
+      {role === "PATIENT" && <PatientGuide session={session} go={setPage} editProfile={() => setProfileOpen(true)}/>} 
     </div>
   );
 }

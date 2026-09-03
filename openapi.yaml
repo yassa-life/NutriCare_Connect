@@ -29,8 +29,30 @@ paths:
       summary: Authenticate and issue a JWT
       requestBody: { required: true, content: { application/json: { schema: { type: object, required: [email,password], properties: { email: { type: string, format: email }, password: { type: string, format: password } } } } } }
       responses: { '200': { description: JWT and user view }, '400': { $ref: '#/components/responses/BadRequest' } }
+  /auth/logout:
+    post: { tags: [Access], summary: End the current session and record an audit event, responses: { '204': { description: Signed out } } }
+  /users/me:
+    get: { tags: [Access], summary: Get the signed-in user's profile, responses: { '200': { description: Current profile } } }
+    patch:
+      tags: [Access]
+      summary: Update changeable profile information
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/ProfileRequest' } } } }
+      responses: { '200': { description: Updated profile } }
   /users:
-    get: { tags: [Access], summary: List users, responses: { '200': { description: User views } } }
+    get: { tags: [Access], summary: List users (system administrator only), responses: { '200': { description: User views } } }
+  /users/{id}/status:
+    patch:
+      tags: [Access]
+      summary: Enable or disable an account without deleting linked records
+      parameters: [ { $ref: '#/components/parameters/Id' } ]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [enabled], properties: { enabled: { type: boolean } } } } } }
+      responses: { '200': { description: Updated user } }
+  /users/{id}/role:
+    patch:
+      tags: [Access]
+      summary: Change an assigned role (system administrator only)
+      parameters: [ { $ref: '#/components/parameters/Id' } ]
+      responses: { '200': { description: Updated user } }
   /users/{id}/unlock:
     post:
       tags: [Access]
@@ -137,6 +159,13 @@ paths:
       summary: Get recipient notifications
       parameters: [ { $ref: '#/components/parameters/Id' } ]
       responses: { '200': { description: Notifications } }
+  /assistant/guide:
+    post:
+      tags: [Communication]
+      summary: Give a patient safe navigation guidance
+      description: Patient-only guidance. The assistant does not diagnose symptoms or interpret results.
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [question], properties: { question: { type: string, maxLength: 500 } } } } } }
+      responses: { '200': { description: Guidance and suggested destinations }, '403': { description: Patient role required } }
   /feedback:
     post:
       tags: [Analytics]
@@ -164,7 +193,11 @@ components:
     RegisterRequest:
       type: object
       required: [fullName,email,password]
-      properties: { fullName: { type: string }, email: { type: string, format: email }, password: { type: string, minLength: 8 }, role: { type: string, default: PATIENT } }
+      properties: { fullName: { type: string }, email: { type: string, format: email }, password: { type: string, minLength: 8 } }
+    ProfileRequest:
+      type: object
+      required: [fullName,email]
+      properties: { fullName: { type: string }, email: { type: string, format: email }, phoneNumber: { type: string }, dateOfBirth: { type: string, format: date }, address: { type: string, maxLength: 500 } }
     HoldRequest:
       type: object
       required: [slotId,patientId,serviceType,amount]
@@ -200,4 +233,3 @@ components:
       type: object
       required: [patientId,practitionerId,appointmentId,rating]
       properties: { patientId: { type: string, format: uuid }, practitionerId: { type: string, format: uuid }, appointmentId: { type: string, format: uuid }, rating: { type: integer, minimum: 1, maximum: 5 }, comments: { type: string, maxLength: 1500 } }
-

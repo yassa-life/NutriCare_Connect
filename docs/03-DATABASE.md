@@ -30,8 +30,11 @@ erDiagram
 | V5 | `secure_messages`, `notifications` | Module 05 |
 | V6 | `feedback`, `complaints` | Module 06 |
 | V7 | Safe synthetic demo users and slots | Integration |
+| V8 | Account lifecycle fields, protected foreign keys and remaining demo roles | Integration |
 
-UUIDs are stored as `BINARY(16)`. Monetary values use `DECIMAL(12,2)`. Clinical measurements use fixed-point decimals. Long user-entered text is length limited. Every history/report path has a patient, time or status index appropriate to its query.
+UUIDs are the primary keys and are stored compactly as `BINARY(16)`. They are globally unique across independently developed modules and avoid exposing predictable account numbers. Monetary values use `DECIMAL(12,2)`. Clinical measurements use fixed-point decimals. Long user-entered text is length limited. Every history/report path has a patient, time or status index appropriate to its query.
+
+All cross-module relationships now use explicit foreign keys with `ON DELETE RESTRICT`. The application exposes no user deletion endpoint. Administrators change `enabled` status instead, preserving appointments, medical history, messages, invoices, feedback and audit evidence.
 
 ## Migration policy
 
@@ -40,4 +43,3 @@ UUIDs are stored as `BINARY(16)`. Monetary values use `DECIMAL(12,2)`. Clinical 
 - Schema names use lower-case snake case; Java fields use camel case.
 - Sample records must be fictional and visibly demo-only.
 - Before merging, start a fresh MySQL container and run all migrations from V1.
-
