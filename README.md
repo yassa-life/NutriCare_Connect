@@ -23,7 +23,7 @@ NutriCare Connect is an academic demonstration of a web-based diet planning and 
 4. Start MySQL and create an empty database named `nutricare`. The default local connection is `root` / `root` on port `3306`; edit the environment variables in the supplied **NutriCare Backend** run configuration if your credentials differ.
 5. Open `backend/src/main/java/lk/sliit/nutricare/NutriCareApplication.java` and click the green Run icon, or select **NutriCare Backend** from the run configurations.
 
-The runnable Java application now lives in the conventional top-level `backend` folder. Each member module also uses Maven's standard `src/main/java`, `src/main/resources`, and `src/test/java` structure.
+The runnable Java application lives in the top-level `backend` folder and the integrated React application lives in the top-level `frontend` folder. Each member keeps independently owned backend and frontend feature code in their numbered folder.
 
 ## Start locally from a terminal
 
@@ -32,7 +32,7 @@ Requirements: Java 21+, Maven 3.9+, Node 20+, npm or pnpm, Docker Desktop.
 1. Copy `.env.example` to `.env` and change the JWT secret.
 2. Start MySQL with `docker compose up -d mysql`.
 3. Start the API with `mvn -pl backend -am spring-boot:run`.
-4. Install frontend packages with `npm install` and start the UI with `npm run dev`.
+4. Install frontend packages with `npm install` and start the top-level React UI with `npm run dev`.
 5. Open `http://localhost:5173`.
 
 All seeded accounts use the password `password`; change this before any shared demonstration. The default database credentials are intentionally local-only.

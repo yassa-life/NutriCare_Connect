@@ -2,7 +2,7 @@ import { cp, mkdir, rm, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 
 const root = resolve(import.meta.dirname, "..");
-const source = resolve(root, "integration/frontend/dist");
+const source = resolve(root, "frontend/dist");
 const output = resolve(root, "dist");
 
 await rm(output, { recursive: true, force: true });

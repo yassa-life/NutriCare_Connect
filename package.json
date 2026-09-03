@@ -3,7 +3,7 @@
   "private": true,
   "version": "1.0.0",
   "workspaces": [
-    "integration/frontend",
+    "frontend",
     "01-user-access-IT25101803/frontend",
     "02-appointment-billing-IT25103681/frontend",
     "03-health-check-IT25102636/frontend",
@@ -17,4 +17,3 @@
     "test": "npm --workspace @nutricare/app run test"
   }
 }
-
