@@ -1,0 +1,15 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="NutriCare Backend" type="SpringBootApplicationConfigurationType" factoryName="Spring Boot">
+    <module name="nutricare-application" />
+    <option name="SPRING_BOOT_MAIN_CLASS" value="lk.sliit.nutricare.NutriCareApplication" />
+    <envs>
+      <env name="DB_URL" value="jdbc:mysql://localhost:3306/nutricare?createDatabaseIfNotExist=true&amp;serverTimezone=Asia/Colombo" />
+      <env name="DB_USERNAME" value="root" />
+      <env name="DB_PASSWORD" value="root" />
+      <env name="JWT_SECRET" value="academic-demo-secret-change-before-deployment" />
+    </envs>
+    <method v="2">
+      <option name="Make" enabled="true" />
+    </method>
+  </configuration>
+</component>

@@ -11,7 +11,7 @@
     <module>04-diet-progress-IT25101696/backend</module>
     <module>05-messaging-reminders-IT25103601/backend</module>
     <module>06-feedback-analytics-IT25100792/backend</module>
-    <module>integration/backend</module>
+    <module>backend</module>
   </modules>
   <properties><java.version>21</java.version></properties>
   <dependencies>
@@ -27,4 +27,3 @@
   </dependencies>
   <build><pluginManagement><plugins><plugin><groupId>org.springframework.boot</groupId><artifactId>spring-boot-maven-plugin</artifactId></plugin></plugins></pluginManagement></build>
 </project>
-

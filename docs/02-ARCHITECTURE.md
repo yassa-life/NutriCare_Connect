@@ -19,7 +19,7 @@ flowchart LR
 
 ## Composition
 
-The root Maven project builds six feature jars and the `integration/backend` executable. Component scanning discovers every controller, service, repository and entity under `lk.sliit.nutricare`. The Vite application imports one React feature package from each student folder and supplies the common shell, navigation and design tokens.
+The root Maven project builds six feature jars and the top-level `backend` executable. Component scanning discovers every controller, service, repository and entity under `lk.sliit.nutricare`. The Vite application imports one React feature package from each student folder and supplies the common shell, navigation and design tokens.
 
 Cross-module records use UUID values rather than Java entity relationships. This keeps compile-time ownership clear while allowing database indexes and API contracts to join data. Feature modules do not import another member's persistence classes; integration occurs through IDs, stable REST operations, and the shared SQL contract. Authentication is supplied by Module 01 through Spring Security. Changes that affect another module require an OpenAPI change and team review.
 
@@ -40,4 +40,3 @@ Cross-module records use UUID values rather than Java entity relationships. This
 - State conflict: HTTP 409 with `code=CONFLICT`
 - Missing authentication: HTTP 401; insufficient permission: HTTP 403
 - Timestamps: ISO-8601
-
