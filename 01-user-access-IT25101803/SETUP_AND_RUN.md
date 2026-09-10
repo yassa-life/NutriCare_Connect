@@ -7,7 +7,7 @@
 ## 📌 Guide Overview
 
 This document provides step-by-step instructions for:
-1. **Phase 1: Full Project Setup & Test Run**: How to download the complete working repository from GitHub, set up dependencies (Java 21, Node.js, MySQL/Docker), run the system, and verify Module 01 (User Access).
+1. **Phase 1: Full Project Setup & Test Run**: How to download the complete working repository from GitHub, set up dependencies (Java 21, Node.js, local MySQL), run the system, and verify Module 01 (User Access).
 2. **Phase 2: Base Repository Setup**: How to clone the clean base project repository (without member feature code) and prepare your environment to commit your module code step-by-step up to **September 19th**.
 
 ---
@@ -22,7 +22,7 @@ Before running the project, ensure your workstation has the following installed:
 | **Apache Maven** | 3.9+ | `mvn -version` |
 | **Node.js** | 20+ | `node -v` |
 | **npm / pnpm** | npm 10+ or pnpm 9+ | `npm -v` or `pnpm -v` |
-| **Docker Desktop / MySQL** | Docker Desktop (or MySQL Server 8.0+) | `docker --version` |
+| **MySQL Server** | MySQL 8.0+ (or MySQL Workbench / XAMPP MySQL) | `mysql --version` |
 | **IDE** | IntelliJ IDEA (Recommended for Spring Boot) | - |
 
 ---
@@ -47,7 +47,7 @@ Copy-Item .env.example .env
 # On Linux / Git Bash / macOS
 cp .env.example .env
 ```
-Ensure `.env` contains:
+Ensure `.env` contains your local MySQL credentials:
 ```env
 SPRING_DATASOURCE_URL=jdbc:mysql://localhost:3306/nutricare?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true
 SPRING_DATASOURCE_USERNAME=root
@@ -55,12 +55,9 @@ SPRING_DATASOURCE_PASSWORD=root
 JWT_SECRET=404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970
 ```
 
-### Step 3: Start the MySQL Database
-Using Docker Desktop (Recommended):
-```bash
-docker compose up -d mysql
-```
-*Note: If using local MySQL server without Docker, ensure service is running on port `3306` with database `nutricare` and credentials `root/root`.*
+### Step 3: Start Local MySQL Database
+Ensure your local MySQL service (or MySQL Workbench / XAMPP MySQL) is running on port `3306`.
+Spring Boot will automatically create and migrate the database named `nutricare` on launch.
 
 ### Step 4: Start the Backend (Spring Boot)
 Option A: From Terminal

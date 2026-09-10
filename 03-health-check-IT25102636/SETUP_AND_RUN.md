@@ -7,7 +7,7 @@
 ## 📌 Guide Overview
 
 This document provides step-by-step instructions for:
-1. **Phase 1: Full Project Setup & Test Run**: How to download the complete working repository from GitHub, set up dependencies (Java 21, Node.js, MySQL/Docker, SMTP / Gemini AI keys), run the system, and verify Module 03 (Health Check & NutriGuide).
+1. **Phase 1: Full Project Setup & Test Run**: How to download the complete working repository from GitHub, set up dependencies (Java 21, Node.js, local MySQL, SMTP / Gemini AI keys), run the system, and verify Module 03 (Health Check & NutriGuide).
 2. **Phase 2: Base Repository Setup**: How to clone the clean base project repository (without member feature code) and prepare your environment to commit your module code step-by-step up to **September 19th**.
 
 ---
@@ -22,7 +22,7 @@ Before running the project, ensure your workstation has the following installed:
 | **Apache Maven** | 3.9+ | `mvn -version` |
 | **Node.js** | 20+ | `node -v` |
 | **npm / pnpm** | npm 10+ or pnpm 9+ | `npm -v` or `pnpm -v` |
-| **Docker Desktop / MySQL** | Docker Desktop (or MySQL Server 8.0+) | `docker --version` |
+| **MySQL Server** | MySQL 8.0+ (or MySQL Workbench / XAMPP MySQL) | `mysql --version` |
 | **IDE** | IntelliJ IDEA (Recommended for Spring Boot) | - |
 
 ---
@@ -49,6 +49,11 @@ cp .env.example .env
 ```
 Ensure your `.env` includes Module 03 specific environment settings:
 ```env
+# Database Credentials
+SPRING_DATASOURCE_URL=jdbc:mysql://localhost:3306/nutricare?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true
+SPRING_DATASOURCE_USERNAME=root
+SPRING_DATASOURCE_PASSWORD=root
+
 # Optional Gemini AI key for NutriGuide Chatbot (without key, safe rule engine handles responses)
 GEMINI_API_KEY=your_google_ai_studio_key_here
 GEMINI_MODEL=gemini-3.5-flash-lite
@@ -63,12 +68,11 @@ MAIL_PASSWORD=your_google_app_password
 MAIL_FROM=your_gmail@gmail.com
 ```
 
-### Step 3: Start MySQL & Spring Boot Backend
+### Step 3: Start Local MySQL & Spring Boot Backend
 ```bash
-# Start MySQL
-docker compose up -d mysql
+# 1. Ensure local MySQL service is running on port 3306
 
-# Start Backend API
+# 2. Start Backend API from terminal (or run NutriCareBackend in IntelliJ IDEA)
 mvn -pl backend -am spring-boot:run
 ```
 
