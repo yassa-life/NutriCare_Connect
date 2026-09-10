@@ -22,5 +22,4 @@ Reception can create, move and cancel bookings while viewing the central schedul
 
 ## Administrator and management
 
-Administrators manage roles and locked accounts and review audit activity. Managers filter operational and satisfaction reports and assign complaint follow-up. Exported figures represent synthetic demo data.
-
+Administrators manage roles and locked accounts, create doctor/staff logins, and provide each new staff member with the one-time temporary password. Staff must replace that password at first sign-in. Any user can select **Forgot password?** to receive a six-digit email code. Managers filter operational and satisfaction reports and assign complaint follow-up. Exported figures represent synthetic seed data.

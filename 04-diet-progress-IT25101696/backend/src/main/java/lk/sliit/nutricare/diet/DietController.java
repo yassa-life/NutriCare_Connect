@@ -8,6 +8,7 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.security.Principal;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
@@ -29,17 +30,17 @@ public class DietController {
     DietController(DietPlanRepository plans, ProgressLogRepository logs) { this.plans = plans; this.logs = logs; }
 
     @PostMapping("/diet-plans")
-    @PreAuthorize("hasRole('DIETITIAN')")
+    @PreAuthorize("hasAnyRole('DIETITIAN','DOCTOR')")
     @ResponseStatus(HttpStatus.CREATED)
-    DietPlan create(@Valid @RequestBody PlanRequest request) { return plans.save(new DietPlan(request.patientId(), request.dietitianId(), request.title(), request.calorieTarget(), request.exclusions(), request.mealSchedule())); }
+    DietPlan create(Principal principal, @Valid @RequestBody PlanRequest request) { return plans.save(new DietPlan(request.patientId(), principal.getName(), request.title(), request.calorieTarget(), request.exclusions(), request.mealSchedule())); }
 
     @PostMapping("/diet-plans/{id}/publish")
-    @PreAuthorize("hasRole('DIETITIAN')")
-    DietPlan publish(@PathVariable UUID id) { DietPlan plan = plans.findById(id).orElseThrow(); plan.publish(); return plans.save(plan); }
+    @PreAuthorize("hasAnyRole('DIETITIAN','DOCTOR')")
+    DietPlan publish(Principal principal, @PathVariable UUID id) { DietPlan plan = plans.findById(id).orElseThrow(); if (!plan.getDietitianId().equals(principal.getName())) throw new IllegalArgumentException("Only the plan author can publish it"); plan.publish(); return plans.save(plan); }
 
     @GetMapping("/diet-plans/patient/{id}")
     @PreAuthorize("hasAnyRole('DIETITIAN','DOCTOR') or (hasRole('PATIENT') and principal == #id.toString())")
-    List<DietPlan> plans(@PathVariable UUID id) { return plans.findByPatientIdOrderByCreatedAtDesc(id); }
+    List<DietPlan> plans(@PathVariable String id) { return plans.findByPatientIdOrderByCreatedAtDesc(id); }
 
     @PostMapping("/progress-logs")
     @PreAuthorize("hasRole('PATIENT') and principal == #request.patientId.toString()")
@@ -48,11 +49,11 @@ public class DietController {
 
     @GetMapping("/progress-logs/patient/{id}")
     @PreAuthorize("hasAnyRole('DIETITIAN','DOCTOR') or (hasRole('PATIENT') and principal == #id.toString())")
-    List<ProgressLog> progress(@PathVariable UUID id) { return logs.findByPatientIdOrderByLogDateAsc(id); }
+    List<ProgressLog> progress(@PathVariable String id) { return logs.findByPatientIdOrderByLogDateAsc(id); }
 
-    record PlanRequest(@NotNull UUID patientId, @NotNull UUID dietitianId, @NotBlank String title,
+    record PlanRequest(@NotNull String patientId, @NotBlank String title,
                        @Positive Integer calorieTarget, String exclusions, @NotBlank String mealSchedule) {}
-    record LogRequest(@NotNull UUID patientId, UUID dietPlanId, @NotNull LocalDate date,
+    record LogRequest(@NotNull String patientId, UUID dietPlanId, @NotNull LocalDate date,
                       @Positive BigDecimal weightKg, @Positive BigDecimal bmi,
                       @Min(0) @Max(30) Integer waterGlasses, @Min(0) Integer mealsCompleted) {}
 }

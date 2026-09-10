@@ -1,3 +1,7 @@
 # Module requirements
 
 Store patient/practitioner IDs, weight, BMI, blood pressure, blood sugar, temperature and notes. Blood sugar above 140 creates HIGH priority and systolic pressure above 140 creates MEDIUM priority. Authorized patient history is newest first. See FR-09–10 and AT-08.
+
+Provide a patient-only NutriGuide endpoint for normal health Q&A, site navigation and temporary, non-diagnostic care support when a human team member is unavailable. Use `gemini-3.5-flash-lite` only when a server-side `GEMINI_API_KEY` exists; never expose the key to React. Every non-emergency health answer must recommend personalized advice from a doctor or registered dietitian. Screen emergency language locally before invoking the model, return an `EMERGENCY`, `URGENT`, or `ROUTINE` urgency value, and expose Sri Lanka's 1990 ambulance action only when needed. Fall back to useful common-health answers, deterministic navigation and safe escalation when credentials are missing or the API fails. Do not diagnose, prescribe, alter treatment, claim staff are monitoring the conversation, or request identifying/payment information.
+
+Own the `AccountMailer` implementation used for password-reset and staff-welcome messages. Support authenticated SMTP with STARTTLS, keep credentials server-side, validate required live-mail settings during startup, and record every simulated, successful or failed attempt in `email_delivery_attempts` without storing OTP or password content.

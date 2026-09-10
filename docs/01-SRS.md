@@ -20,6 +20,8 @@ NutriCare Connect centralizes patient registration, scheduling, health checks, d
 | ID | Requirement | Acceptance summary |
 | --- | --- | --- |
 | FR-01 | Register and authenticate users | Email is unique, password is BCrypt hashed, JWT is issued after valid login. |
+| FR-01A | Provision staff accounts | Only a system administrator can assign staff roles; a generated temporary password must be changed at first login. |
+| FR-01B | Recover a forgotten password | A six-digit email OTP expires after ten minutes and cannot be reused. |
 | FR-02 | Enforce roles and permissions | Protected API and UI actions are unavailable to unauthorized roles. |
 | FR-03 | Lock unsafe login attempts | Five consecutive failures lock the account; an administrator can unlock it. |
 | FR-04 | Manage patient records | Authorized users can create and view profile and medical-history information. |
@@ -51,4 +53,3 @@ NutriCare Connect centralizes patient registration, scheduling, health checks, d
 ## Out of scope
 
 Production clinical guidance, regulatory certification, real payment gateways, real SMS/email delivery, insurance processing, prescription management and real-world emergency response are explicitly excluded.
-

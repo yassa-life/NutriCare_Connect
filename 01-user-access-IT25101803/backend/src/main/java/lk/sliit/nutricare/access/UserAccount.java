@@ -6,13 +6,13 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.time.Instant;
 import java.time.LocalDate;
-import java.util.UUID;
 
 @Entity
 @Table(name = "user_accounts")
 public class UserAccount {
     @Id
-    private UUID id;
+    @Column(length = 16)
+    private String id;
     @Column(nullable = false)
     private String fullName;
     @Column(nullable = false, unique = true)
@@ -29,6 +29,8 @@ public class UserAccount {
     @Column(nullable = false)
     private boolean enabled = true;
     @Column(nullable = false)
+    private boolean mustChangePassword;
+    @Column(nullable = false)
     private boolean locked;
     @Column(nullable = false)
     private int failedAttempts;
@@ -39,8 +41,8 @@ public class UserAccount {
 
     protected UserAccount() {}
 
-    public UserAccount(String fullName, String email, String passwordHash, String role) {
-        this.id = UUID.randomUUID();
+    public UserAccount(String id, String fullName, String email, String passwordHash, String role) {
+        this.id = id;
         this.fullName = fullName.trim();
         this.email = email.trim().toLowerCase();
         this.passwordHash = passwordHash;
@@ -49,7 +51,7 @@ public class UserAccount {
         this.updatedAt = createdAt;
     }
 
-    public UUID getId() { return id; }
+    public String getId() { return id; }
     public String getFullName() { return fullName; }
     public String getEmail() { return email; }
     public String getPhoneNumber() { return phoneNumber; }
@@ -58,6 +60,7 @@ public class UserAccount {
     public String getPasswordHash() { return passwordHash; }
     public String getRole() { return role; }
     public boolean isEnabled() { return enabled; }
+    public boolean isMustChangePassword() { return mustChangePassword; }
     public boolean isLocked() { return locked; }
     public int getFailedAttempts() { return failedAttempts; }
     public Instant getCreatedAt() { return createdAt; }
@@ -88,6 +91,19 @@ public class UserAccount {
 
     public void setRole(String role) {
         this.role = role;
+        touch();
+    }
+
+    public void requirePasswordChange() {
+        mustChangePassword = true;
+        touch();
+    }
+
+    public void changePassword(String passwordHash) {
+        this.passwordHash = passwordHash;
+        this.mustChangePassword = false;
+        this.locked = false;
+        this.failedAttempts = 0;
         touch();
     }
 

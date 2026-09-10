@@ -58,7 +58,7 @@ public class AnalyticsController {
     private long countWhere(String table, String where) { return jdbc.queryForObject("SELECT COUNT(*) FROM " + table + " WHERE " + where, Long.class); }
     private BigDecimal decimal(String sql) { return jdbc.queryForObject(sql, BigDecimal.class); }
 
-    record FeedbackRequest(@NotNull UUID patientId, @NotNull UUID practitionerId, @NotNull UUID appointmentId,
+    record FeedbackRequest(@NotNull String patientId, @NotNull String practitionerId, @NotNull UUID appointmentId,
                            @Min(1) @Max(5) int rating, @Size(max = 1500) String comments) {}
     record Result(Feedback feedback, Complaint complaint) {}
 }

@@ -11,4 +11,4 @@ This is the integrated, runnable React and Vite frontend. It imports one indepen
 
 From the repository root, run `npm install` followed by `npm run dev`. The interface uses forest green, eucalyptus, sage and warm white throughout; amber and red appear only for status and clinical warnings.
 
-The demo interface contains fictional data only. Production API calls should target `http://localhost:8080/api/v1` or a configured deployment URL.
+The demo interface contains fictional data only. Local API calls target `http://localhost:8080/api/v1` unless `VITE_API_BASE_URL` is changed.

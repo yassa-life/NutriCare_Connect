@@ -7,11 +7,14 @@
 - Stateless bearer authentication, login/logout auditing and server-side role authorities.
 - Self-service updates for name, email, phone, date of birth and address; role and status remain administrator-controlled.
 - Administrative disable/enable lifecycle instead of deletion, with disabled tokens rejected on every request.
+- Administrator-only staff provisioning with a one-time temporary password and mandatory first-login password change.
+- Six-digit password-reset codes are stored only as BCrypt hashes, expire after ten minutes and lock after five incorrect attempts.
+- SMTP credentials stay in environment variables; delivery audit records never contain OTPs or passwords.
 - Request validation, bounded text fields, parameterized repository queries and transactional writes.
 - Booking row locks, optimistic versioning and a database uniqueness constraint.
 - Audit records for registration and login, with the extension point documented for all mutations.
 - CORS limited to the configured frontend origin.
-- Patient-only navigation assistant with an explicit non-diagnostic boundary.
+- Patient-only Module 03 navigation assistant with an explicit non-diagnostic boundary. Gemini receives only the patient's typed question when a server-side key is configured; database records are never added to its prompt. A deterministic local fallback handles missing keys and service failures.
 
 ## Role visibility
 

@@ -35,7 +35,7 @@ public class MessageController {
 
     @GetMapping("/messages/patient/{id}")
     @PreAuthorize("hasRole('DIETITIAN') or (hasRole('PATIENT') and principal == #id.toString())")
-    List<SecureMessage> conversation(@PathVariable UUID id) { return messages.findByPatientIdOrderBySentAtAsc(id); }
+    List<SecureMessage> conversation(@PathVariable String id) { return messages.findByPatientIdOrderBySentAtAsc(id); }
 
     @PostMapping("/notifications")
     @PreAuthorize("hasAnyRole('DIETITIAN','DOCTOR','RECEPTION_STAFF','SYSTEM_ADMIN')")
@@ -44,15 +44,15 @@ public class MessageController {
 
     @GetMapping("/notifications/recipient/{id}")
     @PreAuthorize("hasRole('SYSTEM_ADMIN') or principal == #id.toString()")
-    List<Notification> notices(@PathVariable UUID id) { return notifications.findByRecipientIdOrderByCreatedAtDesc(id); }
+    List<Notification> notices(@PathVariable String id) { return notifications.findByRecipientIdOrderByCreatedAtDesc(id); }
 
     @Scheduled(fixedDelay = 60000)
     @Transactional
     public void retry() { notifications.findByStatusAndRetryAtBefore("FAILED", Instant.now()).forEach(Notification::retry); }
 
-    record MessageRequest(@NotNull UUID senderId, @NotNull UUID recipientId, @NotNull UUID patientId,
+    record MessageRequest(@NotNull String senderId, @NotNull String recipientId, @NotNull String patientId,
                           @NotBlank @Size(max = 2000) String body) {}
-    record NoticeRequest(@NotNull UUID recipientId, @NotBlank String type,
+    record NoticeRequest(@NotNull String recipientId, @NotBlank String type,
                          @Pattern(regexp = "IN_APP|EMAIL|SMS") String channel,
                          @NotBlank String message, boolean simulateFailure) {}
 }

@@ -16,4 +16,3 @@ services:
       retries: 20
 volumes:
   nutricare_mysql:
-

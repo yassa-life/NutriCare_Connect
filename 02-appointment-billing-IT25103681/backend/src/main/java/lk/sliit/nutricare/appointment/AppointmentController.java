@@ -63,7 +63,7 @@ public class AppointmentController {
 
     @GetMapping("/appointments/patient/{patientId}")
     @PreAuthorize("hasRole('RECEPTION_STAFF') or (hasRole('PATIENT') and principal == #patientId.toString())")
-    List<Appointment> patient(@PathVariable UUID patientId) {
+    List<Appointment> patient(@PathVariable String patientId) {
         return appointments.findByPatientId(patientId);
     }
 
@@ -71,11 +71,11 @@ public class AppointmentController {
         boolean patient = authentication.getAuthorities().stream().anyMatch(authority -> authority.getAuthority().equals("ROLE_PATIENT"));
         if (patient) {
             Appointment appointment = appointments.findById(appointmentId).orElseThrow();
-            if (!appointment.getPatientId().toString().equals(authentication.getName())) throw new AccessDeniedException("Patient record is not owned by this account");
+            if (!appointment.getPatientId().equals(authentication.getName())) throw new AccessDeniedException("Patient record is not owned by this account");
         }
     }
 
-    record HoldRequest(@NotNull UUID slotId, @NotNull UUID patientId, @NotBlank String serviceType,
+    record HoldRequest(@NotNull UUID slotId, @NotBlank String patientId, @NotBlank String serviceType,
                        @NotNull @DecimalMin("0.00") BigDecimal amount) {}
     record PaymentRequest(@NotNull @DecimalMin("0.00") BigDecimal amount, @NotBlank String method,
                           @NotBlank String status) {}

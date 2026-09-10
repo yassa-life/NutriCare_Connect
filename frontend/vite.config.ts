@@ -12,6 +12,15 @@ export default defineConfig({
       "@nutricare/feedback-analytics": fileURLToPath(new URL("../06-feedback-analytics-IT25100792/frontend/src/index.ts", import.meta.url)),
     },
   },
-  server: { port: 5173 },
+  server: {
+    port: 5173,
+    strictPort: true,
+    proxy: {
+      "/api": {
+        target: "http://localhost:8080",
+        changeOrigin: true,
+      },
+    },
+  },
   preview: { port: 4173 },
 });

@@ -2,7 +2,7 @@ openapi: 3.0.3
 info:
   title: NutriCare Connect API
   version: 1.0.0
-  description: Academic demonstration API. Health thresholds are non-diagnostic; payment, email and SMS are simulated.
+  description: Local portfolio application API. Seed records are fictional, health thresholds are non-diagnostic, and payment gateways remain simulated. SMTP email can be enabled locally.
 servers:
   - url: http://localhost:8080/api/v1
 security:
@@ -31,6 +31,23 @@ paths:
       responses: { '200': { description: JWT and user view }, '400': { $ref: '#/components/responses/BadRequest' } }
   /auth/logout:
     post: { tags: [Access], summary: End the current session and record an audit event, responses: { '204': { description: Signed out } } }
+  /auth/forgot-password:
+    post:
+      tags: [Access]
+      security: []
+      summary: Send a six-digit password reset code by email
+      responses: { '200': { description: Generic delivery response; local simulation may include demoOtp } }
+  /auth/reset-password:
+    post:
+      tags: [Access]
+      security: []
+      summary: Reset a password using a valid ten-minute code
+      responses: { '204': { description: Password changed }, '400': { $ref: '#/components/responses/BadRequest' } }
+  /auth/change-password:
+    post:
+      tags: [Access]
+      summary: Replace a temporary or current password
+      responses: { '200': { description: Updated user with mustChangePassword cleared } }
   /users/me:
     get: { tags: [Access], summary: Get the signed-in user's profile, responses: { '200': { description: Current profile } } }
     patch:
@@ -40,24 +57,29 @@ paths:
       responses: { '200': { description: Updated profile } }
   /users:
     get: { tags: [Access], summary: List users (system administrator only), responses: { '200': { description: User views } } }
+  /users/staff:
+    post:
+      tags: [Access]
+      summary: Provision a staff account and return its one-time temporary password
+      responses: { '201': { description: Staff user and one-time password }, '403': { description: System administrator role required } }
   /users/{id}/status:
     patch:
       tags: [Access]
       summary: Enable or disable an account without deleting linked records
-      parameters: [ { $ref: '#/components/parameters/Id' } ]
+      parameters: [ { $ref: '#/components/parameters/AccountId' } ]
       requestBody: { required: true, content: { application/json: { schema: { type: object, required: [enabled], properties: { enabled: { type: boolean } } } } } }
       responses: { '200': { description: Updated user } }
   /users/{id}/role:
     patch:
       tags: [Access]
       summary: Change an assigned role (system administrator only)
-      parameters: [ { $ref: '#/components/parameters/Id' } ]
+      parameters: [ { $ref: '#/components/parameters/AccountId' } ]
       responses: { '200': { description: Updated user } }
   /users/{id}/unlock:
     post:
       tags: [Access]
       summary: Unlock an account
-      parameters: [ { $ref: '#/components/parameters/Id' } ]
+      parameters: [ { $ref: '#/components/parameters/AccountId' } ]
       responses: { '200': { description: Updated user } }
   /schedules/slots:
     get:
@@ -89,8 +111,25 @@ paths:
     get:
       tags: [Appointments]
       summary: List patient appointments
-      parameters: [ { $ref: '#/components/parameters/Id' } ]
+      parameters: [ { $ref: '#/components/parameters/AccountId' } ]
       responses: { '200': { description: Appointments } }
+  /workspace/people:
+    get:
+      tags: [Access]
+      summary: List enabled people available to the signed-in care role
+      responses: { '200': { description: Database-backed account directory }, '403': { description: Care or administration role required } }
+  /workspace/appointments:
+    get:
+      tags: [Appointments]
+      summary: List appointments scoped to the signed-in account
+      description: Patients see their own rows; doctors and dietitians see rows assigned to them; authorized operational roles see all rows.
+      responses: { '200': { description: Scoped appointments joined with patient, practitioner and invoice details } }
+  /workspace/slots:
+    get:
+      tags: [Appointments]
+      summary: List database slots for a date, scoped to the signed-in practitioner when applicable
+      parameters: [ { name: date, in: query, required: true, schema: { type: string, format: date } } ]
+      responses: { '200': { description: Scoped availability slots } }
   /checkups:
     post:
       tags: [Health]
@@ -101,7 +140,7 @@ paths:
     get:
       tags: [Health]
       summary: Get patient health history
-      parameters: [ { $ref: '#/components/parameters/Id' } ]
+      parameters: [ { $ref: '#/components/parameters/AccountId' } ]
       responses: { '200': { description: Health checks } }
   /health-alerts:
     get: { tags: [Health], summary: List open alerts, responses: { '200': { description: Alerts } } }
@@ -121,7 +160,7 @@ paths:
     get:
       tags: [Diet]
       summary: List patient plans
-      parameters: [ { $ref: '#/components/parameters/Id' } ]
+      parameters: [ { $ref: '#/components/parameters/AccountId' } ]
       responses: { '200': { description: Plans } }
   /progress-logs:
     post:
@@ -133,7 +172,7 @@ paths:
     get:
       tags: [Diet]
       summary: Return patient trend data
-      parameters: [ { $ref: '#/components/parameters/Id' } ]
+      parameters: [ { $ref: '#/components/parameters/AccountId' } ]
       responses: { '200': { description: Progress logs } }
   /messages:
     post:
@@ -145,7 +184,7 @@ paths:
     get:
       tags: [Communication]
       summary: Get patient-care conversation
-      parameters: [ { $ref: '#/components/parameters/Id' } ]
+      parameters: [ { $ref: '#/components/parameters/AccountId' } ]
       responses: { '200': { description: Messages } }
   /notifications:
     post:
@@ -157,15 +196,15 @@ paths:
     get:
       tags: [Communication]
       summary: Get recipient notifications
-      parameters: [ { $ref: '#/components/parameters/Id' } ]
+      parameters: [ { $ref: '#/components/parameters/AccountId' } ]
       responses: { '200': { description: Notifications } }
   /assistant/guide:
     post:
-      tags: [Communication]
-      summary: Give a patient safe navigation guidance
-      description: Patient-only guidance. The assistant does not diagnose symptoms or interpret results.
-      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [question], properties: { question: { type: string, maxLength: 500 } } } } } }
-      responses: { '200': { description: Guidance and suggested destinations }, '403': { description: Patient role required } }
+      tags: [Health]
+      summary: Provide temporary AI care support and site guidance for a patient
+      description: Patient-only Module 03 health Q&A using Gemini 3.5 Flash-Lite when configured. Answers include a professional-care reminder. Deterministic emergency screening runs before the AI call; emergencies direct the patient to Sri Lanka's 1990 ambulance service. The assistant cannot diagnose, prescribe, replace a clinician, or confirm that staff are monitoring the chat.
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [question], properties: { question: { type: string, maxLength: 500 }, history: { type: array, maxItems: 6, items: { type: object, properties: { from: { type: string }, text: { type: string } } } } } } } } }
+      responses: { '200': { description: Answer, urgency level, emergency number, suggested destinations and GEMINI or LOCAL source }, '403': { description: Patient role required } }
   /feedback:
     post:
       tags: [Analytics]
@@ -187,13 +226,15 @@ components:
     bearerAuth: { type: http, scheme: bearer, bearerFormat: JWT }
   parameters:
     Id: { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+    AccountId: { name: id, in: path, required: true, schema: { $ref: '#/components/schemas/AccountId' } }
   responses:
     BadRequest: { description: Validation or state rejection }
   schemas:
+    AccountId: { type: string, pattern: '^[A-Z]{1,2}[0-9]{3}$', example: P001 }
     RegisterRequest:
       type: object
       required: [fullName,email,password]
-      properties: { fullName: { type: string }, email: { type: string, format: email }, password: { type: string, minLength: 8 } }
+      properties: { fullName: { type: string }, email: { type: string, format: email }, password: { type: string, minLength: 8, maxLength: 72 }, phoneNumber: { type: string }, dateOfBirth: { type: string, format: date } }
     ProfileRequest:
       type: object
       required: [fullName,email]
@@ -201,7 +242,7 @@ components:
     HoldRequest:
       type: object
       required: [slotId,patientId,serviceType,amount]
-      properties: { slotId: { type: string, format: uuid }, patientId: { type: string, format: uuid }, serviceType: { type: string }, amount: { type: number, format: decimal, minimum: 0 } }
+      properties: { slotId: { type: string, format: uuid }, patientId: { $ref: '#/components/schemas/AccountId' }, serviceType: { type: string }, amount: { type: number, format: decimal, minimum: 0 } }
     PaymentRequest:
       type: object
       required: [amount,method,status]
@@ -211,25 +252,27 @@ components:
         status: { type: string, enum: [PAID,PENDING,PARTIALLY_PAID,FAILED,REFUNDED] }
     CheckRequest:
       type: object
-      required: [patientId,practitionerId]
-      properties: { patientId: { type: string, format: uuid }, practitionerId: { type: string, format: uuid }, weightKg: { type: number }, bmi: { type: number }, systolic: { type: integer }, diastolic: { type: integer }, bloodSugar: { type: number }, temperature: { type: number }, notes: { type: string } }
+      required: [patientId]
+      description: The practitioner ID is derived from the authenticated account and cannot be supplied by the client.
+      properties: { patientId: { $ref: '#/components/schemas/AccountId' }, weightKg: { type: number }, bmi: { type: number }, systolic: { type: integer }, diastolic: { type: integer }, bloodSugar: { type: number }, temperature: { type: number }, notes: { type: string } }
     DietPlanRequest:
       type: object
-      required: [patientId,dietitianId,title,calorieTarget,mealSchedule]
-      properties: { patientId: { type: string, format: uuid }, dietitianId: { type: string, format: uuid }, title: { type: string }, calorieTarget: { type: integer }, exclusions: { type: string }, mealSchedule: { type: string } }
+      required: [patientId,title,calorieTarget,mealSchedule]
+      description: The plan author ID is derived from the authenticated doctor or dietitian account.
+      properties: { patientId: { $ref: '#/components/schemas/AccountId' }, title: { type: string }, calorieTarget: { type: integer }, exclusions: { type: string }, mealSchedule: { type: string } }
     ProgressRequest:
       type: object
       required: [patientId,date]
-      properties: { patientId: { type: string, format: uuid }, dietPlanId: { type: string, format: uuid }, date: { type: string, format: date }, weightKg: { type: number }, bmi: { type: number }, waterGlasses: { type: integer }, mealsCompleted: { type: integer } }
+      properties: { patientId: { $ref: '#/components/schemas/AccountId' }, dietPlanId: { type: string, format: uuid }, date: { type: string, format: date }, weightKg: { type: number }, bmi: { type: number }, waterGlasses: { type: integer }, mealsCompleted: { type: integer } }
     MessageRequest:
       type: object
       required: [senderId,recipientId,patientId,body]
-      properties: { senderId: { type: string, format: uuid }, recipientId: { type: string, format: uuid }, patientId: { type: string, format: uuid }, body: { type: string, maxLength: 2000 } }
+      properties: { senderId: { $ref: '#/components/schemas/AccountId' }, recipientId: { $ref: '#/components/schemas/AccountId' }, patientId: { $ref: '#/components/schemas/AccountId' }, body: { type: string, maxLength: 2000 } }
     NotificationRequest:
       type: object
       required: [recipientId,type,channel,message]
-      properties: { recipientId: { type: string, format: uuid }, type: { type: string }, channel: { type: string, enum: [IN_APP,EMAIL,SMS] }, message: { type: string }, simulateFailure: { type: boolean } }
+      properties: { recipientId: { $ref: '#/components/schemas/AccountId' }, type: { type: string }, channel: { type: string, enum: [IN_APP,EMAIL,SMS] }, message: { type: string }, simulateFailure: { type: boolean } }
     FeedbackRequest:
       type: object
       required: [patientId,practitionerId,appointmentId,rating]
-      properties: { patientId: { type: string, format: uuid }, practitionerId: { type: string, format: uuid }, appointmentId: { type: string, format: uuid }, rating: { type: integer, minimum: 1, maximum: 5 }, comments: { type: string, maxLength: 1500 } }
+      properties: { patientId: { $ref: '#/components/schemas/AccountId' }, practitionerId: { $ref: '#/components/schemas/AccountId' }, appointmentId: { type: string, format: uuid }, rating: { type: integer, minimum: 1, maximum: 5 }, comments: { type: string, maxLength: 1500 } }

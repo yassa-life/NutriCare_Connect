@@ -15,6 +15,10 @@
 | AT-01 | Register valid patient | Account is created with hashed password and PATIENT role. |
 | AT-02 | Submit invalid email or short password | HTTP 400 identifies invalid fields. |
 | AT-03 | Fail login five times | Account becomes locked; later valid password is rejected. |
+| AT-03A | Admin creates a doctor/staff account | A one-time password is returned and protected staff role is assigned. |
+| AT-03B | Staff signs in with temporary password | All application routes remain blocked until a different password is saved. |
+| AT-03C | Request and use password reset code | Email attempt is recorded, code expires after ten minutes, and a valid code changes the password. |
+| AT-03D | Submit five incorrect reset codes | The reset request is consumed and cannot be reused. |
 | AT-04 | Access clinical endpoint as reception | HTTP 403 and no clinical record is returned. |
 | AT-05 | Hold the same slot concurrently | One request succeeds; the other receives a conflict/rejection. |
 | AT-06 | Leave held booking unpaid | Slot is released after ten minutes and appointment expires. |
@@ -34,4 +38,3 @@ For every run, record date, build identifier, tester, environment, test ID, inpu
 ## Exit criteria
 
 All high-priority acceptance tests pass, no critical/high defect is open, migrations work on an empty database, backend tests and frontend production build succeed, and the demo script completes twice using a freshly seeded environment.
-

@@ -9,25 +9,42 @@ export type SessionUser = {
   address?: string;
   role: Role;
   enabled: boolean;
+  mustChangePassword: boolean;
 };
 
 export type Session = { token: string | null; user: SessionUser; demo: boolean };
 
-const API_BASE = import.meta.env.VITE_API_URL ?? "http://localhost:8080/api/v1";
-const demoAccounts: Record<string, { id: string; name: string; role: Role }> = {
-  "patient@nutricare.demo": { id: "11111111-1111-1111-1111-111111111111", name: "Amal Perera", role: "PATIENT" },
-  "dietitian@nutricare.demo": { id: "22222222-2222-2222-2222-222222222222", name: "Ishara Jayasinghe", role: "DIETITIAN" },
-  "doctor@nutricare.demo": { id: "33333333-3333-3333-3333-333333333333", name: "Chamara Fernando", role: "DOCTOR" },
-  "reception@nutricare.demo": { id: "44444444-4444-4444-4444-444444444444", name: "Dilki Ranatunga", role: "RECEPTION_STAFF" },
-  "admin@nutricare.demo": { id: "55555555-5555-5555-5555-555555555555", name: "System Administrator", role: "SYSTEM_ADMIN" },
-  "manager@nutricare.demo": { id: "66666666-6666-6666-6666-666666666666", name: "Nuwan Perera", role: "OPERATIONS_MANAGER" },
-  "finance@nutricare.demo": { id: "77777777-7777-7777-7777-777777777777", name: "Sahan Wickramasinghe", role: "FINANCE_EXECUTIVE" },
-  "coordinator@nutricare.demo": { id: "88888888-8888-8888-8888-888888888888", name: "Medical Center Coordinator", role: "MEDICAL_CENTER_COORDINATOR" },
-  "relations@nutricare.demo": { id: "99999999-9999-9999-9999-999999999999", name: "Patient Relations Officer", role: "PATIENT_RELATIONS_OFFICER" },
+export type Notification = {
+  id: string;
+  type: string;
+  message: string;
+  time: string;
+  read: boolean;
 };
 
-export const demoEmails = Object.keys(demoAccounts);
+export type WorkspacePerson = { id: string; fullName: string; role: Role; enabled: boolean };
+export type WorkspaceAppointment = {
+  id: string; patientId: string; patientName: string; practitionerId: string; practitionerName: string;
+  serviceType: string; status: string; startTime: string; invoiceNumber?: string; amount?: number; invoiceStatus?: string;
+};
+export type WorkspaceSlot = {
+  id: string; practitionerId: string; practitionerName: string; startTime: string; durationMinutes: number; status: string;
+};
+export type DietPlan = {
+  id: string; patientId: string; dietitianId: string; title: string; calorieTarget?: number;
+  exclusions?: string; mealSchedule: string; status: string; createdAt: string;
+};
+export type ProgressLog = { id: string; patientId: string; dietPlanId?: string; logDate: string; weightKg?: number; bmi?: number; waterGlasses?: number; mealsCompleted?: number };
+export type HealthCheck = {
+  id: string; patientId: string; practitionerId: string; weightKg?: number; bmi?: number;
+  systolic?: number; diastolic?: number; bloodSugar?: number; temperature?: number;
+  notes?: string; recordedAt: string;
+};
+export type HealthCheckResult = { check: HealthCheck; alerts: Array<{ id: string; priority: string; message: string }>; disclaimer: string };
 
+const API_BASE = import.meta.env.VITE_API_BASE_URL ?? import.meta.env.VITE_API_URL ?? "/api/v1";
+
+/* ── Authentication ── */
 export async function login(email: string, password: string): Promise<Session> {
   try {
     const response = await fetch(`${API_BASE}/auth/login`, {
@@ -36,18 +53,152 @@ export async function login(email: string, password: string): Promise<Session> {
       body: JSON.stringify({ email, password }),
       signal: AbortSignal.timeout(1800),
     });
-    if (!response.ok) throw new Error((await response.json().catch(() => ({}))).message ?? "Unable to sign in");
+    if (!response.ok) throw new Error((await response.json().catch(() => ({}))).message ?? "Invalid email or password");
     const result = await response.json();
     return { token: result.token, user: result.user, demo: false };
   } catch (error) {
-    const account = demoAccounts[email.toLowerCase()];
-    if (account && password === "password") {
-      return { token: null, demo: true, user: { id: account.id, fullName: account.name, email: email.toLowerCase(), role: account.role, enabled: true } };
-    }
     throw error instanceof Error ? error : new Error("Unable to sign in");
   }
 }
 
+export async function register(fullName: string, email: string, password: string, phoneNumber?: string, dateOfBirth?: string): Promise<Session> {
+  try {
+    const response = await fetch(`${API_BASE}/auth/register`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ fullName, email, password, phoneNumber, dateOfBirth }),
+      signal: AbortSignal.timeout(3000),
+    });
+    if (!response.ok) {
+      const body = await response.json().catch(() => ({}));
+      throw new Error(body.message ?? "Registration failed. Please try again.");
+    }
+    const result = await response.json();
+    return { token: result.token, user: result.user, demo: false };
+  } catch (error) {
+    throw error instanceof Error ? error : new Error("Registration failed");
+  }
+}
+
+export async function requestPasswordReset(email: string): Promise<{ message: string; demoOtp?: string }> {
+  try {
+    const response = await fetch(`${API_BASE}/auth/forgot-password`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email }),
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!response.ok) {
+      const body = await response.json().catch(() => ({}));
+      throw new Error(body.message ?? "The reset email could not be sent. Please check the mail configuration.");
+    }
+    return response.json();
+  } catch (error) {
+    if (error instanceof TypeError || (error instanceof DOMException && error.name === "TimeoutError")) {
+      throw new Error("Cannot reach the NutriCare backend. Start the NutriCare Backend configuration in IntelliJ and try again.");
+    }
+    throw error instanceof Error ? error : new Error("The reset request failed.");
+  }
+}
+
+export async function resetPassword(email: string, otp: string, newPassword: string): Promise<void> {
+  const response = await fetch(`${API_BASE}/auth/reset-password`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, otp, newPassword }),
+  });
+  if (!response.ok) throw new Error((await response.json().catch(() => ({}))).message ?? "Invalid or expired reset code");
+}
+
+export async function changePassword(session: Session, currentPassword: string, newPassword: string): Promise<Session> {
+  if (!session.token) return { ...session, user: { ...session.user, mustChangePassword: false } };
+  const response = await fetch(`${API_BASE}/auth/change-password`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.token}` },
+    body: JSON.stringify({ currentPassword, newPassword }),
+  });
+  if (!response.ok) throw new Error((await response.json().catch(() => ({}))).message ?? "Password could not be changed");
+  return { ...session, user: await response.json() };
+}
+
+export async function provisionStaff(session: Session, fullName: string, email: string, role: Role) {
+  if (!session.token) {
+    throw new Error("The backend is required to create staff accounts");
+  }
+  const response = await fetch(`${API_BASE}/users/staff`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.token}` },
+    body: JSON.stringify({ fullName, email, role }),
+  });
+  if (!response.ok) throw new Error((await response.json().catch(() => ({}))).message ?? "Staff account could not be created");
+  return response.json() as Promise<{ user: SessionUser; temporaryPassword: string }>;
+}
+
+async function authenticated<T>(session: Session, path: string, init?: RequestInit): Promise<T> {
+  if (!session.token) throw new Error("The backend is required for this action");
+  const response = await fetch(`${API_BASE}${path}`, {
+    ...init,
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.token}`, ...init?.headers },
+  });
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({}));
+    throw new Error(body.message ?? `Request failed (${response.status})`);
+  }
+  if (response.status === 204) return undefined as T;
+  return response.json() as Promise<T>;
+}
+
+export function fetchUsers(session: Session): Promise<SessionUser[]> {
+  return authenticated(session, "/users");
+}
+
+export function setUserEnabled(session: Session, id: string, enabled: boolean): Promise<SessionUser> {
+  return authenticated(session, `/users/${id}/status`, { method: "PATCH", body: JSON.stringify({ enabled }) });
+}
+
+export function fetchWorkspacePeople(session: Session): Promise<WorkspacePerson[]> {
+  return authenticated(session, "/workspace/people");
+}
+
+export function fetchWorkspaceAppointments(session: Session): Promise<WorkspaceAppointment[]> {
+  return authenticated(session, "/workspace/appointments");
+}
+
+export function fetchWorkspaceSlots(session: Session, date: string): Promise<WorkspaceSlot[]> {
+  return authenticated(session, `/workspace/slots?date=${encodeURIComponent(date)}`);
+}
+
+export function holdAppointment(session: Session, details: { slotId: string; patientId: string; serviceType: string; amount: number }) {
+  return authenticated(session, "/appointments/hold", { method: "POST", body: JSON.stringify(details) });
+}
+
+export function createDietPlan(session: Session, plan: { patientId: string; title: string; calorieTarget: number; exclusions?: string; mealSchedule: string }): Promise<DietPlan> {
+  return authenticated(session, "/diet-plans", { method: "POST", body: JSON.stringify(plan) });
+}
+
+export function fetchDietPlans(session: Session, patientId: string): Promise<DietPlan[]> {
+  return authenticated(session, `/diet-plans/patient/${patientId}`);
+}
+
+export function fetchProgressLogs(session: Session, patientId: string): Promise<ProgressLog[]> {
+  return authenticated(session, `/progress-logs/patient/${patientId}`);
+}
+
+export function fetchHealthChecks(session: Session, patientId: string): Promise<HealthCheck[]> {
+  return authenticated(session, `/checkups/patient/${patientId}`);
+}
+
+export function createHealthCheck(session: Session, check: {
+  patientId: string; weightKg: number; bmi: number; systolic?: number; diastolic?: number;
+  bloodSugar: number; temperature: number; notes?: string;
+}): Promise<HealthCheckResult> {
+  return authenticated(session, "/checkups", {
+    method: "POST",
+    body: JSON.stringify(check),
+  });
+}
+
+/* ── Profile ── */
 export async function updateProfile(session: Session, updates: Partial<SessionUser>): Promise<Session> {
   if (!session.token) return { ...session, user: { ...session.user, ...updates } };
   const response = await fetch(`${API_BASE}/users/me`, {
@@ -59,24 +210,178 @@ export async function updateProfile(session: Session, updates: Partial<SessionUs
   return { ...session, user: await response.json() };
 }
 
+/* ── Session ── */
 export async function logout(session: Session) {
   if (!session.token) return;
   await fetch(`${API_BASE}/auth/logout`, { method: "POST", headers: { Authorization: `Bearer ${session.token}` } }).catch(() => undefined);
 }
 
-export async function askPatientGuide(session: Session, question: string) {
-  if (session.token) {
-    const response = await fetch(`${API_BASE}/assistant/guide`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.token}` },
-      body: JSON.stringify({ question }),
+/* ── Notifications ── */
+export async function fetchNotifications(session: Session): Promise<Notification[]> {
+  if (!session.token) return [];
+  try {
+    const response = await fetch(`${API_BASE}/notifications/recipient/${session.user.id}`, {
+      headers: { Authorization: `Bearer ${session.token}` },
+      signal: AbortSignal.timeout(2000),
     });
-    if (response.ok) return response.json() as Promise<{ answer: string; suggestedDestinations: string[] }>;
+    if (response.ok) {
+      const items = await response.json() as Array<{ id: string; type: string; message: string; status?: string; createdAt?: string }>;
+      return items.map(item => ({
+        id: item.id,
+        type: item.type,
+        message: item.message,
+        time: item.createdAt ? new Date(item.createdAt).toLocaleString() : "",
+        read: item.status === "READ",
+      }));
+    }
+  } catch { /* fall through to seed */ }
+  return [];
+}
+
+/* ── Patient guide ── */
+export type GuideMessage = { from: string; text: string };
+type GuideReply = { answer: string; suggestedDestinations: string[]; source: "GEMINI" | "LOCAL"; urgency?: "EMERGENCY" | "URGENT" | "ROUTINE"; emergencyNumber?: string };
+
+/* Step-by-step guidance for multi-step flows */
+const profileSteps = [
+  "Click your name in the top-right corner of the screen to open the account menu.",
+  "Select \"Edit profile\" from the dropdown menu.",
+  "Update your name, email, phone number, date of birth, or address in the form.",
+  "Click \"Save profile\" to apply your changes. You'll see a confirmation message.",
+];
+
+const appointmentSteps = [
+  "Click \"Appointments\" in the left sidebar to open the appointments page.",
+  "Browse the available consultation times and select one that works for you.",
+  "Fill in the booking form with the patient name and choose a practitioner.",
+  "Click \"Hold slot & generate invoice\" to confirm. The slot is reserved for 10 minutes.",
+];
+
+const dietSteps = [
+  "Click \"Diet & progress\" in the left sidebar.",
+  "Review your current meal plan and mark meals as completed by clicking on them.",
+  "Track your water intake using the \"+ Add water\" button.",
+  "Check the weight progress chart on the right to see your weekly trend.",
+];
+
+const feedbackSteps = [
+  "Click \"Reports & feedback\" in the left sidebar.",
+  "Under \"Record feedback\", select a star rating from 1 to 5.",
+  "Write your comments or complaint in the text box.",
+  "Click \"Submit feedback\" — if the rating is 2 or below, a complaint ticket is created automatically.",
+];
+
+type TopicKey = "profile" | "appointments" | "diet" | "health" | "messages" | "feedback" | "emergency" | null;
+
+const topicSteps: Record<string, string[]> = {
+  profile: profileSteps,
+  appointments: appointmentSteps,
+  diet: dietSteps,
+  feedback: feedbackSteps,
+};
+
+/* Detect which topic the user is asking about */
+function detectTopic(text: string): TopicKey {
+  if (/emergency|chest (pain|pressure)|cannot breathe|can't breathe|not breathing|unconscious|passed out|stroke|face drooping|seizure|severe bleeding|overdose|poison|anaphylaxis|self harm|suicide|kill myself|ambulance/.test(text)) return "emergency";
+  if (/profile|name|phone|address|email|update.*(?:my|the)|change.*(?:my|the)|edit.*(?:my|the)|account.*setting/.test(text)) return "profile";
+  if (/book|appointment|check.?up|schedule|slot|consultation|cancel.*appointment|reschedule/.test(text)) return "appointments";
+  if (/diet|meal|water|weight|progress|nutrition|calorie|food|eat/.test(text)) return "diet";
+  if (/health|result|blood|bmi|vital|pressure|sugar|temperature/.test(text)) return "health";
+  if (/message|chat|talk|conversation|send.*message|contact.*(?:doctor|dietitian|practitioner)/.test(text)) return "messages";
+  if (/feedback|complain|rate|rating|review|report|complaint|support/.test(text)) return "feedback";
+  if (/payment|invoice|bill|pay|outstanding|due|receipt/.test(text)) return "appointments";
+  if (/reminder|notification|alert|bell/.test(text)) return "messages";
+  return null;
+}
+
+/* Check if the question is a follow-up */
+function isFollowUp(text: string): boolean {
+  return /^(after that|then what|and then|next step|what.?s next|how|then|okay|ok|go on|continue|what do i do|what next|and\?|so\?|now what|what else|got it|done|i did that|yes|yep|yeah|sure)[\s!?.]*$/i.test(text)
+    || /^(after|then|next|how do i|what should i|and after|once i|when i|after i)/.test(text);
+}
+
+/* Track conversation state */
+let lastTopic: TopicKey = null;
+let lastStep = -1;
+
+export async function askPatientGuide(session: Session, question: string, history?: GuideMessage[]): Promise<GuideReply> {
+  /* Try backend first */
+  if (session.token) {
+    try {
+      const response = await fetch(`${API_BASE}/assistant/guide`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.token}` },
+        body: JSON.stringify({ question, history: history?.slice(-6) }),
+      });
+      if (response.ok) return response.json() as Promise<GuideReply>;
+    } catch { /* fall through to local */ }
   }
-  const text = question.toLowerCase();
-  if (/book|appointment|check.?up|schedule/.test(text)) return { answer: "Open Appointments to choose a practitioner and available time.", suggestedDestinations: ["appointments"] };
-  if (/diet|meal|water|weight|progress/.test(text)) return { answer: "Open Diet & progress to review your plan and record daily progress.", suggestedDestinations: ["diet"] };
-  if (/health|result|blood|bmi|vital/.test(text)) return { answer: "Open Health checks to view your own results. Ask your clinician to interpret medical values.", suggestedDestinations: ["health"] };
-  if (/profile|name|phone|address|email/.test(text)) return { answer: "Open your account menu and select Edit profile.", suggestedDestinations: ["profile"] };
-  return { answer: "I can guide you to appointments, health records, diet plans, messages or profile settings. I cannot diagnose symptoms.", suggestedDestinations: [] };
+
+  const text = question.toLowerCase().trim();
+
+  /* Emergency — always takes priority */
+  if (detectTopic(text) === "emergency") {
+    lastTopic = null;
+    lastStep = -1;
+    return { answer: "Call 1990 now for Sri Lanka's emergency ambulance service. Put the phone on speaker, share your location, and follow the dispatcher's instructions. Do not wait for this chat or drive yourself.", suggestedDestinations: [], source: "LOCAL", urgency: "EMERGENCY", emergencyNumber: "1990" };
+  }
+
+  /* Detect new topic or follow-up */
+  const detectedTopic = detectTopic(text);
+  const followUp = isFollowUp(text);
+
+  if (detectedTopic) {
+    /* User asked about a specific topic */
+    lastTopic = detectedTopic;
+    lastStep = 0;
+
+    const steps = topicSteps[detectedTopic];
+    if (steps) {
+      return { answer: `Sure! Here's what to do:\n\n**Step 1:** ${steps[0]}`, suggestedDestinations: [detectedTopic], source: "LOCAL" };
+    }
+
+    /* Topics without step-by-step */
+    if (detectedTopic === "health") {
+      return { answer: "Open **Health checks** from the sidebar to view your vitals, BMI, blood sugar and blood pressure records. Your clinician records new measurements during each visit. Ask your doctor to interpret the values.", suggestedDestinations: ["health"], source: "LOCAL" };
+    }
+    if (detectedTopic === "messages") {
+      return { answer: "Open **Messages** from the sidebar to view and send secure, non-urgent messages to your care team. You can also see automated reminders for upcoming appointments and diet updates.", suggestedDestinations: ["messages"], source: "LOCAL" };
+    }
+  } else if (followUp && lastTopic) {
+    /* Follow-up on the current topic */
+    const steps = topicSteps[lastTopic];
+    if (steps) {
+      lastStep++;
+      if (lastStep < steps.length) {
+        return { answer: `**Step ${lastStep + 1}:** ${steps[lastStep]}`, suggestedDestinations: [lastTopic], source: "LOCAL" };
+      } else {
+        const doneMsg = `That's all the steps! You're all set. Let me know if you need help with anything else.`;
+        lastTopic = null;
+        lastStep = -1;
+        return { answer: doneMsg, suggestedDestinations: [], source: "LOCAL" };
+      }
+    } else {
+      /* Topic has no steps — provide a helpful response */
+      lastTopic = null;
+      lastStep = -1;
+      return { answer: "You can explore that section from the sidebar. Let me know if you have a specific question!", suggestedDestinations: [], source: "LOCAL" };
+    }
+  } else if (followUp && !lastTopic) {
+    return { answer: "I'm not sure what you're referring to. Could you tell me what you'd like help with? For example: appointments, health records, diet plans, messages, or profile settings.", suggestedDestinations: [], source: "LOCAL" };
+  }
+
+  /* Greetings */
+  if (/^(hi|hello|hey|good morning|good afternoon|good evening|howdy|sup)[\s!?.]*$/i.test(text)) {
+    return { answer: "Hello! 👋 I can help you with appointments, health records, diet plans, messages, feedback, or your profile. What would you like to know?", suggestedDestinations: [], source: "LOCAL" };
+  }
+
+  /* Thank you */
+  if (/^(thanks|thank you|thx|ty|cheers|appreciate)[\s!?.]*$/i.test(text)) {
+    return { answer: "You're welcome! Let me know if you need anything else. 😊", suggestedDestinations: [], source: "LOCAL" };
+  }
+
+  /* Generic fallback */
+  lastTopic = null;
+  lastStep = -1;
+  return { answer: "I can help you with:\n\n• **Appointments** — booking, rescheduling\n• **Health checks** — viewing your vitals\n• **Diet & progress** — meal plans, water tracking\n• **Messages** — contacting your care team\n• **Feedback** — rating consultations\n• **Profile** — updating your details\n\nWhat would you like to do?", suggestedDestinations: [], source: "LOCAL" };
 }

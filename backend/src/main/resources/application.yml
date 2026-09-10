@@ -1,4 +1,6 @@
 spring:
+  config:
+    import: optional:file:.env[.properties]
   application:
     name: nutricare-connect
   datasource:
@@ -11,10 +13,23 @@ spring:
     open-in-view: false
     properties:
       hibernate:
+        type:
+          preferred_uuid_jdbc_type: VARCHAR
         jdbc:
           time_zone: Asia/Colombo
   flyway:
     enabled: true
+  mail:
+    host: ${MAIL_HOST:localhost}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    properties:
+      "[mail.smtp.auth]": ${MAIL_SMTP_AUTH:true}
+      "[mail.smtp.starttls.enable]": ${MAIL_STARTTLS:true}
+      "[mail.smtp.connectiontimeout]": 5000
+      "[mail.smtp.timeout]": 5000
+      "[mail.smtp.writetimeout]": 5000
 server:
   port: ${PORT:8080}
   error:
@@ -22,6 +37,12 @@ server:
 nutricare:
   jwt-secret: ${JWT_SECRET:academic-demo-secret-change-before-deployment}
   jwt-hours: 8
-  demo-notifications: true
-  web-origin: ${WEB_ORIGIN:http://localhost:5173}
-
+  demo-notifications: ${DEMO_NOTIFICATIONS:true}
+  web-origin: ${WEB_ORIGIN:http://localhost:5173,http://127.0.0.1:5173,http://localhost:5174,http://127.0.0.1:5174}
+  ai:
+    gemini:
+      api-key: ${GEMINI_API_KEY:}
+      model: ${GEMINI_MODEL:gemini-3.5-flash-lite}
+  mail:
+    live-enabled: ${MAIL_LIVE_ENABLED:false}
+    from: ${MAIL_FROM:noreply@nutricare.local}

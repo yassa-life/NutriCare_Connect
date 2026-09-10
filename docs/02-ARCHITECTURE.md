@@ -21,7 +21,7 @@ flowchart LR
 
 The root Maven project builds six feature jars and the top-level `backend` executable. Component scanning discovers every controller, service, repository and entity under `lk.sliit.nutricare`. The top-level `frontend` Vite application imports one React feature package from each student folder and supplies the common shell, navigation and shared visual tokens.
 
-Cross-module records use UUID values rather than Java entity relationships. This keeps compile-time ownership clear while allowing database indexes and API contracts to join data. Feature modules do not import another member's persistence classes; integration occurs through IDs, stable REST operations, and the shared SQL contract. Authentication is supplied by Module 01 through Spring Security. Changes that affect another module require an OpenAPI change and team review.
+Cross-module records use stable string identifiers rather than Java entity relationships. People use readable role-based account IDs such as `P001` and `D001`; transactional records retain UUID strings. This keeps compile-time ownership clear while allowing database indexes and API contracts to join data. Feature modules do not import another member's persistence classes; integration occurs through IDs, stable REST operations, and the shared SQL contract. Authentication is supplied by Module 01 through Spring Security. Changes that affect another module require an OpenAPI change and team review.
 
 ## Data flow
 
@@ -35,7 +35,8 @@ Cross-module records use UUID values rather than Java entity relationships. This
 
 - Prefix: `/api/v1`
 - Content type: `application/json`
-- IDs: UUID strings
+- Account IDs: role prefix plus three digits, such as `P001`, `D001` or `DT001`
+- Transaction IDs: UUID strings
 - Validation: HTTP 400 with `code=VALIDATION_ERROR` and `fields`
 - State conflict: HTTP 409 with `code=CONFLICT`
 - Missing authentication: HTTP 401; insufficient permission: HTTP 403
