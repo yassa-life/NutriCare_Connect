@@ -59,10 +59,36 @@ class SmtpAccountMailer implements AccountMailer {
         "A staff welcome email was processed.");
   }
 
-  private void send(String email, String template, String subject, String body, String preview) {
+  @Transactional(
+      propagation = Propagation.REQUIRES_NEW,
+      noRollbackFor = IllegalStateException.class)
+  EmailDeliveryAttempt sendAdminTest(String email) {
+    String preview =
+        liveEmail
+            ? "An administrator test email was sent through SMTP."
+            : "An administrator test email was recorded in simulated mode.";
+    return send(
+        email,
+        "ADMIN_EMAIL_TEST",
+        "NutriCare email delivery test",
+        "This is a NutriCare Connect administrator test message. If you received this inbox"
+            + " message, live SMTP delivery is working.",
+        preview);
+  }
+
+  boolean isLiveEmail() {
+    return liveEmail;
+  }
+
+  String getFromAddress() {
+    return from;
+  }
+
+  private EmailDeliveryAttempt send(
+      String email, String template, String subject, String body, String preview) {
     if (!liveEmail) {
-      deliveries.save(new EmailDeliveryAttempt(email, template, "SIMULATED_DELIVERED", preview));
-      return;
+      return deliveries.save(
+          new EmailDeliveryAttempt(email, template, "SIMULATED_DELIVERED", preview));
     }
     SimpleMailMessage message = new SimpleMailMessage();
     message.setFrom(from);
@@ -71,7 +97,7 @@ class SmtpAccountMailer implements AccountMailer {
     message.setText(body);
     try {
       mailSender.send(message);
-      deliveries.save(new EmailDeliveryAttempt(email, template, "SENT", preview));
+      return deliveries.save(new EmailDeliveryAttempt(email, template, "SENT", preview));
     } catch (MailException exception) {
       deliveries.save(new EmailDeliveryAttempt(email, template, "FAILED", preview));
       throw new IllegalStateException(

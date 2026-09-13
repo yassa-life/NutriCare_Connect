@@ -14,14 +14,14 @@ import org.springframework.stereotype.Service;
 @Service
 public class TokenService {
   private final byte[] secret;
-  private final long hours;
+  private final long minutes;
   private final ObjectMapper mapper = new ObjectMapper();
 
   public TokenService(
       @Value("${nutricare.jwt-secret}") String secret,
-      @Value("${nutricare.jwt-hours:8}") long hours) {
+      @Value("${nutricare.jwt-minutes:30}") long minutes) {
     this.secret = secret.getBytes(StandardCharsets.UTF_8);
-    this.hours = hours;
+    this.minutes = minutes;
   }
 
   public String issue(UserAccount user) {
@@ -38,7 +38,7 @@ public class TokenService {
                       "role",
                       user.getRole(),
                       "exp",
-                      Instant.now().plusSeconds(hours * 3600).getEpochSecond())));
+                      Instant.now().plusSeconds(minutes * 60).getEpochSecond())));
       String unsignedToken = header + "." + payload;
       return unsignedToken + "." + sign(unsignedToken);
     } catch (Exception error) {

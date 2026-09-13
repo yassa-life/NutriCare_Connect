@@ -12,6 +12,7 @@ import {
   Leaf,
   Menu,
   MessageCircle,
+  Mail,
   Search,
   Settings,
   ShieldCheck,
@@ -19,16 +20,17 @@ import {
   X,
 } from "lucide-react";
 import { LoginScreen, ProfileModal, RequiredPasswordChange } from "./AccountExperience";
-import { askPatientGuide, createDeliveryNotice, createDietPlan, createHealthCheck, fetchComplaints, fetchDeliveryNotices, fetchDietPlans, fetchHealthChecks, fetchMessages, fetchNotifications, fetchProgressLogs, fetchReportSummary, fetchUsers, fetchWorkspaceAppointments, fetchWorkspacePeople, fetchWorkspaceSlots, holdAppointment, logout, Notification, provisionStaff, Role, sendSecureMessage, Session, setUserEnabled, submitFeedback, WorkspaceAppointment } from "./api";
+import { askPatientGuide, clearStoredSession, createDeliveryNotice, createDietPlan, createHealthCheck, fetchComplaints, fetchDeliveryNotices, fetchDietPlans, fetchHealthChecks, fetchMailAttempts, fetchMailStatus, fetchMessages, fetchNotifications, fetchProgressLogs, fetchReportSummary, fetchUsers, fetchWorkspaceAppointments, fetchWorkspacePeople, fetchWorkspaceSlots, holdAppointment, loadStoredSession, logout, Notification, provisionStaff, Role, sendAdminMailTest, sendSecureMessage, Session, setUserEnabled, storedSessionRemainingMs, submitFeedback, touchStoredSession, WorkspaceAppointment } from "./api";
 const UserAccessFeature = lazy(() => import("@nutricare/user-access").then((module) => ({ default: module.UserAccessFeature })));
 const AppointmentBillingFeature = lazy(() => import("@nutricare/appointment-billing").then((module) => ({ default: module.AppointmentBillingFeature })));
 const HealthCheckFeature = lazy(() => import("@nutricare/health-check").then((module) => ({ default: module.HealthCheckFeature })));
 const PatientGuide = lazy(() => import("@nutricare/health-check").then((module) => ({ default: module.PatientGuide })));
+const EmailTestFeature = lazy(() => import("@nutricare/health-check").then((module) => ({ default: module.EmailTestFeature })));
 const DietProgressFeature = lazy(() => import("@nutricare/diet-progress").then((module) => ({ default: module.DietProgressFeature })));
 const MessagingRemindersFeature = lazy(() => import("@nutricare/messaging-reminders").then((module) => ({ default: module.MessagingRemindersFeature })));
 const FeedbackAnalyticsFeature = lazy(() => import("@nutricare/feedback-analytics").then((module) => ({ default: module.FeedbackAnalyticsFeature })));
 
-type Page = "overview" | "users" | "appointments" | "health" | "diet" | "messages" | "analytics";
+type Page = "overview" | "users" | "appointments" | "health" | "diet" | "messages" | "analytics" | "email";
 
 const nav = [
   { id: "overview" as Page, label: "Overview", icon: LayoutDashboard },
@@ -38,6 +40,7 @@ const nav = [
   { id: "diet" as Page, label: "Diet & progress", icon: Leaf },
   { id: "messages" as Page, label: "Messages", icon: MessageCircle },
   { id: "analytics" as Page, label: "Reports & feedback", icon: Star },
+  { id: "email" as Page, label: "Email test", icon: Mail },
 ];
 
 const roleLabels: Record<Role, string> = {
@@ -215,7 +218,7 @@ function Overview({ go, role, userName, userId, loadAppointments, loadPlans, loa
 /* ──────────────────────────── App Shell ──────────────────────────── */
 
 export function App() {
-  const [session, setSession] = useState<Session | null>(null);
+  const [session, setSession] = useState<Session | null>(() => loadStoredSession());
   const [page, setPage] = useState<Page>("overview");
   const [menuOpen, setMenuOpen] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
@@ -230,6 +233,52 @@ export function App() {
   useEffect(() => {
     if (!rolePages[role].includes(page)) setPage("overview");
   }, [page, role]);
+
+  /* Expire session after 30 minutes (absolute) or 30 minutes idle */
+  useEffect(() => {
+    if (!session) return;
+
+    function expire() {
+      clearStoredSession();
+      setSession(null);
+      setPage("overview");
+      setNotifications([]);
+      setAccountOpen(false);
+      setNotifyOpen(false);
+    }
+
+    function schedule(): number | null {
+      const remaining = storedSessionRemainingMs();
+      if (remaining <= 0) {
+        expire();
+        return null;
+      }
+      return window.setTimeout(expire, remaining);
+    }
+
+    let timer = schedule();
+    let lastTouch = 0;
+
+    function onActivity() {
+      const now = Date.now();
+      if (now - lastTouch < 15_000) return;
+      lastTouch = now;
+      const remaining = touchStoredSession();
+      if (remaining <= 0) {
+        expire();
+        return;
+      }
+      if (timer != null) window.clearTimeout(timer);
+      timer = window.setTimeout(expire, remaining);
+    }
+
+    const events: Array<keyof WindowEventMap> = ["pointerdown", "keydown", "mousemove", "scroll", "touchstart"];
+    events.forEach((event) => window.addEventListener(event, onActivity, { passive: true }));
+    return () => {
+      if (timer != null) window.clearTimeout(timer);
+      events.forEach((event) => window.removeEventListener(event, onActivity));
+    };
+  }, [session]);
 
   /* Load notifications when session starts */
   useEffect(() => {
@@ -268,6 +317,9 @@ export function App() {
   const postFeedback = useCallback((details: { patientId: string; practitionerId: string; appointmentId: string; rating: number; comments?: string }) => submitFeedback(requireSession(), details), [requireSession]);
   const loadComplaints = useCallback(() => fetchComplaints(requireSession()), [requireSession]);
   const loadReport = useCallback((from: string, to: string) => fetchReportSummary(requireSession(), from, to), [requireSession]);
+  const loadMailStatus = useCallback(() => fetchMailStatus(requireSession()), [requireSession]);
+  const loadMailAttempts = useCallback(() => fetchMailAttempts(requireSession()), [requireSession]);
+  const postMailTest = useCallback((to: string) => sendAdminMailTest(requireSession(), to), [requireSession]);
 
   if (!session) return <LoginScreen onLogin={setSession}/>;
 
@@ -324,6 +376,7 @@ export function App() {
             {page === "diet" && <DietProgressFeature canManagePlans={role === "DIETITIAN" || role === "DOCTOR"} currentUserId={session.user.id} loadPeople={loadPeople} loadPlans={loadPlans} loadProgress={loadProgress} savePlan={savePlan} />}
             {page === "messages" && <MessagingRemindersFeature patientOnly={role === "PATIENT"} currentUserId={session.user.id} userName={session.user.fullName} loadPeople={loadPeople} loadMessages={loadMessages} sendMessage={postMessage} loadNotices={loadNotices} createNotice={postNotice} />}
             {page === "analytics" && <FeedbackAnalyticsFeature patientOnly={role === "PATIENT"} currentUserId={session.user.id} loadAppointments={loadAppointments} loadPeople={loadPeople} submitFeedback={postFeedback} loadComplaints={loadComplaints} loadReport={loadReport} />}
+            {page === "email" && role === "SYSTEM_ADMIN" && <EmailTestFeature defaultEmail={session.user.email} loadStatus={loadMailStatus} loadAttempts={loadMailAttempts} sendTest={postMailTest} />}
           </Suspense>
         </div>
       </main>

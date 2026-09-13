@@ -14,6 +14,79 @@ export type SessionUser = {
 
 export type Session = { token: string | null; user: SessionUser; demo: boolean };
 
+/** Absolute/idle client session window — aligned with JWT lifetime. */
+export const SESSION_TTL_MS = 30 * 60 * 1000;
+const SESSION_STORAGE_KEY = "nutricare.session";
+
+type StoredSession = { session: Session; expiresAt: number; lastActiveAt: number };
+
+function readStored(): StoredSession | null {
+  try {
+    const raw = localStorage.getItem(SESSION_STORAGE_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw) as StoredSession;
+  } catch {
+    return null;
+  }
+}
+
+function isExpired(stored: StoredSession, now = Date.now()): boolean {
+  if (!stored?.session || !stored.expiresAt || stored.expiresAt <= now) return true;
+  const lastActive = stored.lastActiveAt ?? stored.expiresAt - SESSION_TTL_MS;
+  return now - lastActive > SESSION_TTL_MS;
+}
+
+/** Persist a newly issued login/register session (starts a fresh 30-minute window). */
+export function saveSession(session: Session): void {
+  const now = Date.now();
+  const payload: StoredSession = { session, expiresAt: now + SESSION_TTL_MS, lastActiveAt: now };
+  localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(payload));
+}
+
+/** Update stored user/token without extending absolute expiry. */
+export function updateStoredSession(session: Session): void {
+  const existing = readStored();
+  if (!existing || isExpired(existing)) {
+    saveSession(session);
+    return;
+  }
+  localStorage.setItem(
+    SESSION_STORAGE_KEY,
+    JSON.stringify({ ...existing, session, lastActiveAt: Date.now() }),
+  );
+}
+
+export function clearStoredSession(): void {
+  localStorage.removeItem(SESSION_STORAGE_KEY);
+}
+
+export function loadStoredSession(): Session | null {
+  const stored = readStored();
+  if (!stored || isExpired(stored)) {
+    clearStoredSession();
+    return null;
+  }
+  return stored.session;
+}
+
+/** Refresh idle clock without extending past absolute expiry. Returns remaining ms, or 0 if expired. */
+export function touchStoredSession(): number {
+  const stored = readStored();
+  if (!stored || isExpired(stored)) {
+    clearStoredSession();
+    return 0;
+  }
+  const now = Date.now();
+  localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify({ ...stored, lastActiveAt: now }));
+  return stored.expiresAt - now;
+}
+
+export function storedSessionRemainingMs(): number {
+  const stored = readStored();
+  if (!stored || isExpired(stored)) return 0;
+  return stored.expiresAt - Date.now();
+}
+
 export type Notification = {
   id: string;
   type: string;
@@ -55,7 +128,9 @@ export async function login(email: string, password: string): Promise<Session> {
     });
     if (!response.ok) throw new Error((await response.json().catch(() => ({}))).message ?? "Invalid email or password");
     const result = await response.json();
-    return { token: result.token, user: result.user, demo: false };
+    const session: Session = { token: result.token, user: result.user, demo: false };
+    saveSession(session);
+    return session;
   } catch (error) {
     if (error instanceof TypeError || (error instanceof DOMException && error.name === "TimeoutError")) {
       throw new Error("Cannot reach the NutriCare backend. Confirm Spring Boot is running on port 8080.");
@@ -77,7 +152,9 @@ export async function register(fullName: string, email: string, password: string
       throw new Error(body.message ?? "Registration failed. Please try again.");
     }
     const result = await response.json();
-    return { token: result.token, user: result.user, demo: false };
+    const session: Session = { token: result.token, user: result.user, demo: false };
+    saveSession(session);
+    return session;
   } catch (error) {
     throw error instanceof Error ? error : new Error("Registration failed");
   }
@@ -121,7 +198,9 @@ export async function changePassword(session: Session, currentPassword: string, 
     body: JSON.stringify({ currentPassword, newPassword }),
   });
   if (!response.ok) throw new Error((await response.json().catch(() => ({}))).message ?? "Password could not be changed");
-  return { ...session, user: await response.json() };
+  const next: Session = { ...session, user: await response.json() };
+  updateStoredSession(next);
+  return next;
 }
 
 export async function provisionStaff(session: Session, fullName: string, email: string, role: Role) {
@@ -210,11 +289,14 @@ export async function updateProfile(session: Session, updates: Partial<SessionUs
     body: JSON.stringify({ ...session.user, ...updates }),
   });
   if (!response.ok) throw new Error("Profile could not be updated");
-  return { ...session, user: await response.json() };
+  const next: Session = { ...session, user: await response.json() };
+  updateStoredSession(next);
+  return next;
 }
 
 /* ── Session ── */
 export async function logout(session: Session) {
+  clearStoredSession();
   if (!session.token) return;
   await fetch(`${API_BASE}/auth/logout`, { method: "POST", headers: { Authorization: `Bearer ${session.token}` } }).catch(() => undefined);
 }
@@ -283,6 +365,37 @@ export function fetchComplaints(session: Session): Promise<Complaint[]> {
 
 export function fetchReportSummary(session: Session, from: string, to: string): Promise<ReportSummary> {
   return authenticated(session, `/reports/summary?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`);
+}
+
+/* ── Admin email test ── */
+export type MailStatus = {
+  liveEmailEnabled: boolean;
+  fromAddress: string;
+  mode: string;
+};
+
+export type MailAttempt = {
+  id: string;
+  recipientEmail: string;
+  template: string;
+  status: string;
+  messagePreview: string;
+  createdAt: string;
+};
+
+export function fetchMailStatus(session: Session): Promise<MailStatus> {
+  return authenticated(session, "/admin/mail/status");
+}
+
+export function fetchMailAttempts(session: Session): Promise<MailAttempt[]> {
+  return authenticated(session, "/admin/mail/attempts");
+}
+
+export function sendAdminMailTest(session: Session, to: string): Promise<MailAttempt> {
+  return authenticated(session, "/admin/mail/test", {
+    method: "POST",
+    body: JSON.stringify({ to }),
+  });
 }
 
 export async function fetchNotifications(session: Session): Promise<Notification[]> {

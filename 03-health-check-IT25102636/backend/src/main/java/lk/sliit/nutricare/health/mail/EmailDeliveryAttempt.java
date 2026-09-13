@@ -31,4 +31,28 @@ class EmailDeliveryAttempt {
     this.messagePreview = messagePreview;
     this.createdAt = Instant.now();
   }
+
+  UUID getId() {
+    return id;
+  }
+
+  String getRecipientEmail() {
+    return recipientEmail;
+  }
+
+  String getTemplate() {
+    return template;
+  }
+
+  String getStatus() {
+    return status;
+  }
+
+  String getMessagePreview() {
+    return messagePreview;
+  }
+
+  Instant getCreatedAt() {
+    return createdAt;
+  }
 }
