@@ -19,7 +19,7 @@ import {
   X,
 } from "lucide-react";
 import { LoginScreen, ProfileModal, RequiredPasswordChange } from "./AccountExperience";
-import { askPatientGuide, createDietPlan, createHealthCheck, fetchDietPlans, fetchHealthChecks, fetchNotifications, fetchProgressLogs, fetchUsers, fetchWorkspaceAppointments, fetchWorkspacePeople, fetchWorkspaceSlots, holdAppointment, logout, Notification, provisionStaff, Role, Session, setUserEnabled, WorkspaceAppointment } from "./api";
+import { askPatientGuide, createDeliveryNotice, createDietPlan, createHealthCheck, fetchComplaints, fetchDeliveryNotices, fetchDietPlans, fetchHealthChecks, fetchMessages, fetchNotifications, fetchProgressLogs, fetchReportSummary, fetchUsers, fetchWorkspaceAppointments, fetchWorkspacePeople, fetchWorkspaceSlots, holdAppointment, logout, Notification, provisionStaff, Role, sendSecureMessage, Session, setUserEnabled, submitFeedback, WorkspaceAppointment } from "./api";
 const UserAccessFeature = lazy(() => import("@nutricare/user-access").then((module) => ({ default: module.UserAccessFeature })));
 const AppointmentBillingFeature = lazy(() => import("@nutricare/appointment-billing").then((module) => ({ default: module.AppointmentBillingFeature })));
 const HealthCheckFeature = lazy(() => import("@nutricare/health-check").then((module) => ({ default: module.HealthCheckFeature })));
@@ -261,6 +261,13 @@ export function App() {
   const savePlan = useCallback((plan: { patientId: string; title: string; calorieTarget: number; exclusions?: string; mealSchedule: string }) => createDietPlan(requireSession(), plan), [requireSession]);
   const loadChecks = useCallback((patientId: string) => fetchHealthChecks(requireSession(), patientId), [requireSession]);
   const saveCheck = useCallback((check: { patientId: string; weightKg: number; bmi: number; systolic?: number; diastolic?: number; bloodSugar: number; temperature: number; notes?: string }) => createHealthCheck(requireSession(), check), [requireSession]);
+  const loadMessages = useCallback((patientId: string) => fetchMessages(requireSession(), patientId), [requireSession]);
+  const postMessage = useCallback((details: { senderId: string; recipientId: string; patientId: string; body: string }) => sendSecureMessage(requireSession(), details), [requireSession]);
+  const loadNotices = useCallback((recipientId: string) => fetchDeliveryNotices(requireSession(), recipientId), [requireSession]);
+  const postNotice = useCallback((details: { recipientId: string; type: string; channel: "IN_APP" | "EMAIL" | "SMS"; message: string; simulateFailure?: boolean }) => createDeliveryNotice(requireSession(), details), [requireSession]);
+  const postFeedback = useCallback((details: { patientId: string; practitionerId: string; appointmentId: string; rating: number; comments?: string }) => submitFeedback(requireSession(), details), [requireSession]);
+  const loadComplaints = useCallback(() => fetchComplaints(requireSession()), [requireSession]);
+  const loadReport = useCallback((from: string, to: string) => fetchReportSummary(requireSession(), from, to), [requireSession]);
 
   if (!session) return <LoginScreen onLogin={setSession}/>;
 
@@ -289,7 +296,7 @@ export function App() {
         <div className="brand"><span className="brand-mark"><Leaf size={22} /></span><span><b>NutriCare</b><small>CONNECT</small></span><button className="icon mobile-only" onClick={() => setMenuOpen(false)} aria-label="Close menu"><X /></button></div>
         <nav aria-label="Main navigation">
           <p>Workspace</p>
-          {visibleNav.map((item) => <button key={item.id} className={page === item.id ? "active" : ""} onClick={() => { setPage(item.id); setMenuOpen(false); }}><item.icon size={19} /><span>{item.label}</span>{item.id === "messages" && <em>2</em>}</button>)}
+          {visibleNav.map((item) => <button key={item.id} className={page === item.id ? "active" : ""} onClick={() => { setPage(item.id); setMenuOpen(false); }}><item.icon size={19} /><span>{item.label}</span>{item.id === "messages" && unreadCount > 0 && <em>{unreadCount}</em>}</button>)}
         </nav>
         <div className="sidebar-foot"><HeartHandshake size={18} /><span><b>Care with clarity</b><small>Secure patient data</small></span></div>
       </aside>
@@ -315,8 +322,8 @@ export function App() {
             {page === "appointments" && <AppointmentBillingFeature role={role} currentUserId={session.user.id} userName={session.user.fullName} loadAppointments={loadAppointments} loadSlots={loadSlots} loadPeople={loadPeople} createBooking={createBooking} />}
             {page === "health" && <HealthCheckFeature patientOnly={role === "PATIENT"} userName={session.user.fullName} currentUserId={session.user.id} loadPeople={loadPeople} loadChecks={loadChecks} saveCheck={saveCheck} />}
             {page === "diet" && <DietProgressFeature canManagePlans={role === "DIETITIAN" || role === "DOCTOR"} currentUserId={session.user.id} loadPeople={loadPeople} loadPlans={loadPlans} loadProgress={loadProgress} savePlan={savePlan} />}
-            {page === "messages" && <MessagingRemindersFeature patientOnly={role === "PATIENT"} userName={session.user.fullName} />}
-            {page === "analytics" && <FeedbackAnalyticsFeature patientOnly={role === "PATIENT"} />}
+            {page === "messages" && <MessagingRemindersFeature patientOnly={role === "PATIENT"} currentUserId={session.user.id} userName={session.user.fullName} loadPeople={loadPeople} loadMessages={loadMessages} sendMessage={postMessage} loadNotices={loadNotices} createNotice={postNotice} />}
+            {page === "analytics" && <FeedbackAnalyticsFeature patientOnly={role === "PATIENT"} currentUserId={session.user.id} loadAppointments={loadAppointments} loadPeople={loadPeople} submitFeedback={postFeedback} loadComplaints={loadComplaints} loadReport={loadReport} />}
           </Suspense>
         </div>
       </main>

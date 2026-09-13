@@ -14,20 +14,28 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/v1/assistant")
 @PreAuthorize("hasRole('PATIENT')")
 public class PatientGuideController {
-    private final PatientGuideService guideService;
+  private final PatientGuideService guideService;
 
-    PatientGuideController(PatientGuideService guideService) {
-        this.guideService = guideService;
-    }
+  PatientGuideController(PatientGuideService guideService) {
+    this.guideService = guideService;
+  }
 
-    @PostMapping("/guide")
-    public GuideResponse guide(@Valid @RequestBody GuideRequest request) {
-        return guideService.answer(request.question(), request.history() == null ? List.of() : request.history());
-    }
+  @PostMapping("/guide")
+  public GuideResponse guide(@Valid @RequestBody GuideRequest request) {
+    return guideService.answer(
+        request.question(), request.history() == null ? List.of() : request.history());
+  }
 
-    public record GuideMessage(@NotBlank String from, @NotBlank @Size(max = 500) String text) {}
-    public record GuideRequest(@NotBlank @Size(max = 500) String question, List<GuideMessage> history) {}
-    public record GuideResponse(String answer, List<String> suggestedDestinations,
-                                boolean nonDiagnostic, String source, String urgency,
-                                String emergencyNumber) {}
+  public record GuideMessage(@NotBlank String from, @NotBlank @Size(max = 500) String text) {}
+
+  public record GuideRequest(
+      @NotBlank @Size(max = 500) String question, List<GuideMessage> history) {}
+
+  public record GuideResponse(
+      String answer,
+      List<String> suggestedDestinations,
+      boolean nonDiagnostic,
+      String source,
+      String urgency,
+      String emergencyNumber) {}
 }

@@ -1,14 +1,17 @@
 # Module 03: Setup, Download & Testing Guide
 **Owner:** Herath H.M.H.Y. (`IT25102636`)  
-**Module:** Health Check-up, NutriGuide AI & SMTP Email (`03-health-check-IT25102636`)
+**Module:** Health Check-up, NutriGuide AI & SMTP Email Delivery (`03-health-check-IT25102636`)
 
 ---
 
-## 📌 Guide Overview
+## 📌 Guide Overview & Ownership
 
-This document provides step-by-step instructions for:
-1. **Phase 1: Full Project Setup & Test Run**: How to download the complete working repository from GitHub, set up dependencies (Java 21, Node.js, local MySQL, SMTP / Gemini AI keys), run the system, and verify Module 03 (Health Check & NutriGuide).
-2. **Phase 2: Base Repository Setup**: How to clone the clean base project repository (without member feature code) and prepare your environment to commit your module code step-by-step up to **September 19th**.
+This document provides step-by-step instructions for **Herath H.M.H.Y. (IT25102636)** who owns **Module 03**. 
+
+### 🌟 Key Responsibilities Owned by IT25102636:
+1. **Health Check-up & Vitals Monitoring**: Health check logging, vitals history tracking, threshold alert evaluation (BP, Glucose, BMI, Heart Rate).
+2. **NutriGuide AI Health Chatbot**: Integrated Google Gemini 3.5 Flash-Lite health Q&A assistant (`PatientGuideService`), server-side emergency screening (1990 action trigger), and safe offline rules engine fallback.
+3. **SMTP Email Delivery System**: Application-wide email infrastructure (`SmtpAccountMailer`), live Gmail SMTP app password setup, OTP password reset emails, and email delivery audit log tracking (`email_delivery_attempts`).
 
 ---
 
@@ -38,7 +41,7 @@ git clone <GITHUB_REPOSITORY_URL>
 cd Web_project
 ```
 
-### Step 2: Set Up Environment Variables (Including Module 03 SMTP & Gemini)
+### Step 2: Set Up Environment Variables (Email & AI Settings)
 Create a local `.env` file from `.env.example`:
 ```bash
 # On Windows PowerShell
@@ -47,36 +50,40 @@ Copy-Item .env.example .env
 # On Linux / Git Bash / macOS
 cp .env.example .env
 ```
-Ensure your `.env` includes Module 03 specific environment settings:
+
+Ensure your `.env` contains your MySQL, Gemini AI, and SMTP credentials:
 ```env
-# Database Credentials
+# Database Connection
 SPRING_DATASOURCE_URL=jdbc:mysql://localhost:3306/nutricare?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true
 SPRING_DATASOURCE_USERNAME=root
 SPRING_DATASOURCE_PASSWORD=root
 
-# Optional Gemini AI key for NutriGuide Chatbot (without key, safe rule engine handles responses)
-GEMINI_API_KEY=your_google_ai_studio_key_here
+# NutriGuide AI Settings (Owned by IT25102636)
+GEMINI_API_KEY=your_google_ai_studio_api_key_here
 GEMINI_MODEL=gemini-3.5-flash-lite
 
-# Email SMTP Settings (Owned by Module 03)
+# Email SMTP Settings (Owned by IT25102636)
 DEMO_NOTIFICATIONS=true
 MAIL_LIVE_ENABLED=false
 MAIL_HOST=smtp.gmail.com
 MAIL_PORT=587
-MAIL_USERNAME=your_gmail@gmail.com
-MAIL_PASSWORD=your_google_app_password
-MAIL_FROM=your_gmail@gmail.com
+MAIL_USERNAME=your_gmail_address@gmail.com
+MAIL_PASSWORD=your_16_character_google_app_password
+MAIL_FROM=your_gmail_address@gmail.com
+MAIL_SMTP_AUTH=true
+MAIL_STARTTLS=true
 ```
 
-### Step 3: Start Local MySQL & Spring Boot Backend
+### Step 3: Start Local MySQL & Backend API
 ```bash
-# 1. Ensure local MySQL service is running on port 3306
+# 1. Ensure local MySQL service is running on port 3306 (Database: nutricare)
 
-# 2. Start Backend API from terminal (or run NutriCareBackend in IntelliJ IDEA)
+# 2. Start Spring Boot Backend API from terminal or IntelliJ IDEA
 mvn -pl backend -am spring-boot:run
 ```
 
 ### Step 4: Start Frontend
+In a separate terminal window at the project root:
 ```bash
 npm install
 npm run dev
@@ -85,28 +92,32 @@ Open your web browser at: `http://localhost:5173`
 
 ---
 
-## 🧪 Testing Module 03 (Health Check & NutriGuide Features)
+## 🧪 Testing Module 03 Features (Email, AI & Health Checks)
 
-As owner of **Module 03**, test the following key workflows on `http://localhost:5173`:
+As owner of **Module 03 (IT25102636)**, test the following key features:
 
-1. **Patient Health Check-up Entry**:
-   - Sign in as a patient (`patient@nutricare.demo` / `password`).
-   - Navigate to **Health Checks** and submit vitals (Blood Pressure, Glucose, BMI, Heart Rate).
-2. **Threshold Alerts & History Tracking**:
-   - Submit abnormal vitals (e.g. Systolic BP > 140) and verify warning banner and patient advice.
-   - View graphical health metric history and trends.
-3. **NutriGuide AI Chatbot**:
-   - Open the **NutriGuide AI** widget on the bottom right or navigation menu.
-   - Ask health/nutrition questions (e.g. "What should I eat to manage high blood pressure?").
-   - Test non-diagnostic disclaimers and emergency 1990 action trigger for severe symptoms.
-4. **SMTP Email Notification Verification**:
-   - Verify OTP email dispatch or simulated console/localhost delivery.
+### ✉️ 1. SMTP Email Delivery System (`SmtpAccountMailer`)
+- Select **Forgot password?** on the sign-in page (`http://localhost:5173`).
+- Enter a registered patient/staff email.
+- **Simulated Mode (`MAIL_LIVE_ENABLED=false`)**: Check the browser/console for the 6-digit OTP code and confirm a `SIMULATED_DELIVERED` record in `email_delivery_attempts`.
+- **Live Mode (`MAIL_LIVE_ENABLED=true`)**: Configure your Gmail address and 16-character Google App Password in `.env`, trigger password reset, and check your inbox for the OTP email.
+
+### 🤖 2. NutriGuide AI Health Chatbot (`PatientGuideService`)
+- Open **NutriGuide AI** on the bottom right or from the patient dashboard menu.
+- **Normal Health Q&A**: Ask nutrition or health questions (e.g. *"What diet is best for managing high blood pressure?"*). Verify the AI response and non-diagnostic disclaimers.
+- **Emergency Screening**: Ask severe emergency questions (e.g. *"I have severe chest pain and difficulty breathing"*). Verify that the server safety filter immediately displays the **Emergency Call 1990** prompt.
+- **Offline Fallback**: Remove `GEMINI_API_KEY` from `.env` and verify that NutriGuide continues to answer common nutrition questions safely using the server-side rules engine.
+
+### 📊 3. Health Check-up Entry & Threshold Alerts
+- Sign in as a patient (`patient@nutricare.demo` / `password`).
+- Navigate to **Health Checks** and log vitals (Systolic BP, Diastolic BP, Fasting Glucose, BMI).
+- Test abnormal vitals entry (e.g. Systolic BP > 140) to confirm clinical alert banners and trend graphs.
 
 ---
 
 ## 🔄 Phase 2: Working on the Clean Base Repository
 
-Once the test run is complete and you understand how the system operates:
+Once testing is complete and you understand how the system operates:
 
 1. Download/clone the **Clean Base Repository** provided by the project lead.
 2. Copy your feature files from `03-health-check-IT25102636` into your workspace.
@@ -118,7 +129,7 @@ Once the test run is complete and you understand how the system operates:
 
 Run these commands periodically to verify code integrity:
 ```bash
-# Test Module 03 backend code:
+# Run Module 03 backend unit tests (includes SmtpAccountMailerTest & PatientGuideServiceTest):
 mvn -pl 03-health-check-IT25102636/backend -am test
 
 # Test top-level frontend compilation:

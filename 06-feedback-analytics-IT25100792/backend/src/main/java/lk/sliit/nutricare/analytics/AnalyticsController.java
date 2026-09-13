@@ -25,40 +25,83 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/v1")
 public class AnalyticsController {
-    private final FeedbackRepository feedback;
-    private final ComplaintRepository complaints;
-    private final JdbcTemplate jdbc;
+  private final FeedbackRepository feedback;
+  private final ComplaintRepository complaints;
+  private final JdbcTemplate jdbc;
 
-    AnalyticsController(FeedbackRepository feedback, ComplaintRepository complaints, JdbcTemplate jdbc) { this.feedback = feedback; this.complaints = complaints; this.jdbc = jdbc; }
+  AnalyticsController(
+      FeedbackRepository feedback, ComplaintRepository complaints, JdbcTemplate jdbc) {
+    this.feedback = feedback;
+    this.complaints = complaints;
+    this.jdbc = jdbc;
+  }
 
-    @PostMapping("/feedback")
-    @PreAuthorize("hasRole('PATIENT') and principal == #request.patientId.toString()")
-    @ResponseStatus(HttpStatus.CREATED)
-    @Transactional
-    Result submit(@Valid @RequestBody FeedbackRequest request) {
-        Feedback saved = feedback.save(new Feedback(request.patientId(), request.practitionerId(), request.appointmentId(), request.rating(), request.comments()));
-        Complaint complaint = request.rating() <= 2 ? complaints.save(new Complaint(saved.getId())) : null;
-        return new Result(saved, complaint);
-    }
+  @PostMapping("/feedback")
+  @PreAuthorize("hasRole('PATIENT') and principal == #request.patientId.toString()")
+  @ResponseStatus(HttpStatus.CREATED)
+  @Transactional
+  Result submit(@Valid @RequestBody FeedbackRequest request) {
+    Feedback saved =
+        feedback.save(
+            new Feedback(
+                request.patientId(),
+                request.practitionerId(),
+                request.appointmentId(),
+                request.rating(),
+                request.comments()));
+    Complaint complaint =
+        request.rating() <= 2 ? complaints.save(new Complaint(saved.getId())) : null;
+    return new Result(saved, complaint);
+  }
 
-    @GetMapping("/complaints")
-    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN','OPERATIONS_MANAGER','PATIENT_RELATIONS_OFFICER')")
-    List<Complaint> complaints() { return complaints.findAll(); }
+  @GetMapping("/complaints")
+  @PreAuthorize("hasAnyRole('SYSTEM_ADMIN','OPERATIONS_MANAGER','PATIENT_RELATIONS_OFFICER')")
+  List<Complaint> complaints() {
+    return complaints.findAll();
+  }
 
-    @GetMapping("/reports/summary")
-    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN','OPERATIONS_MANAGER','FINANCE_EXECUTIVE')")
-    Map<String, Object> summary(@RequestParam LocalDate from, @RequestParam LocalDate to) {
-        return Map.of("from", from, "to", to, "users", count("user_accounts"), "appointments", count("appointments"),
-                "completedPayments", countWhere("payments", "status='PAID'"), "openAlerts", countWhere("health_alerts", "status='OPEN'"),
-                "publishedPlans", countWhere("diet_plans", "status='PUBLISHED'"), "feedback", count("feedback"),
-                "averageRating", decimal("SELECT COALESCE(AVG(rating),0) FROM feedback"));
-    }
+  @GetMapping("/reports/summary")
+  @PreAuthorize("hasAnyRole('SYSTEM_ADMIN','OPERATIONS_MANAGER','FINANCE_EXECUTIVE')")
+  Map<String, Object> summary(@RequestParam LocalDate from, @RequestParam LocalDate to) {
+    return Map.of(
+        "from",
+        from,
+        "to",
+        to,
+        "users",
+        count("user_accounts"),
+        "appointments",
+        count("appointments"),
+        "completedPayments",
+        countWhere("payments", "status='PAID'"),
+        "openAlerts",
+        countWhere("health_alerts", "status='OPEN'"),
+        "publishedPlans",
+        countWhere("diet_plans", "status='PUBLISHED'"),
+        "feedback",
+        count("feedback"),
+        "averageRating",
+        decimal("SELECT COALESCE(AVG(rating),0) FROM feedback"));
+  }
 
-    private long count(String table) { return jdbc.queryForObject("SELECT COUNT(*) FROM " + table, Long.class); }
-    private long countWhere(String table, String where) { return jdbc.queryForObject("SELECT COUNT(*) FROM " + table + " WHERE " + where, Long.class); }
-    private BigDecimal decimal(String sql) { return jdbc.queryForObject(sql, BigDecimal.class); }
+  private long count(String table) {
+    return jdbc.queryForObject("SELECT COUNT(*) FROM " + table, Long.class);
+  }
 
-    record FeedbackRequest(@NotNull String patientId, @NotNull String practitionerId, @NotNull UUID appointmentId,
-                           @Min(1) @Max(5) int rating, @Size(max = 1500) String comments) {}
-    record Result(Feedback feedback, Complaint complaint) {}
+  private long countWhere(String table, String where) {
+    return jdbc.queryForObject("SELECT COUNT(*) FROM " + table + " WHERE " + where, Long.class);
+  }
+
+  private BigDecimal decimal(String sql) {
+    return jdbc.queryForObject(sql, BigDecimal.class);
+  }
+
+  record FeedbackRequest(
+      @NotNull String patientId,
+      @NotNull String practitionerId,
+      @NotNull UUID appointmentId,
+      @Min(1) @Max(5) int rating,
+      @Size(max = 1500) String comments) {}
+
+  record Result(Feedback feedback, Complaint complaint) {}
 }

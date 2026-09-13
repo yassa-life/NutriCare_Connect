@@ -11,33 +11,41 @@ import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 
 class SmtpAccountMailerTest {
-    private final EmailDeliveryAttemptRepository deliveries = mock(EmailDeliveryAttemptRepository.class);
-    private final JavaMailSender mailSender = mock(JavaMailSender.class);
+  private final EmailDeliveryAttemptRepository deliveries =
+      mock(EmailDeliveryAttemptRepository.class);
+  private final JavaMailSender mailSender = mock(JavaMailSender.class);
 
-    @Test
-    void simulatedModeRecordsDeliveryWithoutContactingSmtp() {
-        SmtpAccountMailer mailer = new SmtpAccountMailer(deliveries, mailSender, false, "", "", "");
+  @Test
+  void simulatedModeRecordsDeliveryWithoutContactingSmtp() {
+    SmtpAccountMailer mailer = new SmtpAccountMailer(deliveries, mailSender, false, "", "", "");
 
-        mailer.sendPasswordResetOtp("patient@example.com", "123456");
+    mailer.sendPasswordResetOtp("patient@example.com", "123456");
 
-        verify(deliveries).save(any(EmailDeliveryAttempt.class));
-        verify(mailSender, never()).send(any(SimpleMailMessage.class));
-    }
+    verify(deliveries).save(any(EmailDeliveryAttempt.class));
+    verify(mailSender, never()).send(any(SimpleMailMessage.class));
+  }
 
-    @Test
-    void liveModeRequiresAllSenderCredentials() {
-        assertThrows(IllegalStateException.class,
-                () -> new SmtpAccountMailer(deliveries, mailSender, true, "", "", ""));
-    }
+  @Test
+  void liveModeRequiresAllSenderCredentials() {
+    assertThrows(
+        IllegalStateException.class,
+        () -> new SmtpAccountMailer(deliveries, mailSender, true, "", "", ""));
+  }
 
-    @Test
-    void liveModeSendsAndRecordsSuccessfulAttempt() {
-        SmtpAccountMailer mailer = new SmtpAccountMailer(
-                deliveries, mailSender, true, "sender@example.com", "sender@example.com", "app-password");
+  @Test
+  void liveModeSendsAndRecordsSuccessfulAttempt() {
+    SmtpAccountMailer mailer =
+        new SmtpAccountMailer(
+            deliveries,
+            mailSender,
+            true,
+            "sender@example.com",
+            "sender@example.com",
+            "app-password");
 
-        mailer.sendPasswordResetOtp("patient@example.com", "123456");
+    mailer.sendPasswordResetOtp("patient@example.com", "123456");
 
-        verify(mailSender).send(any(SimpleMailMessage.class));
-        verify(deliveries).save(any(EmailDeliveryAttempt.class));
-    }
+    verify(mailSender).send(any(SimpleMailMessage.class));
+    verify(deliveries).save(any(EmailDeliveryAttempt.class));
+  }
 }

@@ -7,7 +7,6 @@ import java.math.BigDecimal;
 import java.security.Principal;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,36 +21,75 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/v1")
 public class HealthController {
-    private final HealthCheckRepository checks;
-    private final HealthAlertRepository alerts;
+  private final HealthCheckRepository checks;
+  private final HealthAlertRepository alerts;
 
-    HealthController(HealthCheckRepository checks, HealthAlertRepository alerts) {
-        this.checks = checks;
-        this.alerts = alerts;
-    }
+  HealthController(HealthCheckRepository checks, HealthAlertRepository alerts) {
+    this.checks = checks;
+    this.alerts = alerts;
+  }
 
-    @PostMapping("/checkups")
-    @PreAuthorize("hasAnyRole('DOCTOR','MEDICAL_CENTER_COORDINATOR')")
-    @ResponseStatus(HttpStatus.CREATED)
-    @Transactional
-    public Result create(Principal principal, @Valid @RequestBody CheckRequest request) {
-        HealthCheck check = checks.save(new HealthCheck(request.patientId(), principal.getName(), request.weightKg(), request.bmi(), request.systolic(), request.diastolic(), request.bloodSugar(), request.temperature(), request.notes()));
-        List<HealthAlert> created = new ArrayList<>();
-        if (request.bloodSugar() != null && request.bloodSugar().compareTo(new BigDecimal("140")) > 0) created.add(alerts.save(new HealthAlert(check.getId(), request.patientId(), "HIGH", "Blood sugar exceeds the demo threshold of 140 mg/dL")));
-        if (request.systolic() != null && request.systolic() > 140) created.add(alerts.save(new HealthAlert(check.getId(), request.patientId(), "MEDIUM", "Blood pressure exceeds the demo threshold")));
-        return new Result(check, created, "Thresholds are demonstration values and are not diagnostic.");
-    }
+  @PostMapping("/checkups")
+  @PreAuthorize("hasAnyRole('DOCTOR','MEDICAL_CENTER_COORDINATOR')")
+  @ResponseStatus(HttpStatus.CREATED)
+  @Transactional
+  public Result create(Principal principal, @Valid @RequestBody CheckRequest request) {
+    HealthCheck check =
+        checks.save(
+            new HealthCheck(
+                request.patientId(),
+                principal.getName(),
+                request.weightKg(),
+                request.bmi(),
+                request.systolic(),
+                request.diastolic(),
+                request.bloodSugar(),
+                request.temperature(),
+                request.notes()));
+    List<HealthAlert> created = new ArrayList<>();
+    if (request.bloodSugar() != null && request.bloodSugar().compareTo(new BigDecimal("140")) > 0)
+      created.add(
+          alerts.save(
+              new HealthAlert(
+                  check.getId(),
+                  request.patientId(),
+                  "HIGH",
+                  "Blood sugar exceeds the demo threshold of 140 mg/dL")));
+    if (request.systolic() != null && request.systolic() > 140)
+      created.add(
+          alerts.save(
+              new HealthAlert(
+                  check.getId(),
+                  request.patientId(),
+                  "MEDIUM",
+                  "Blood pressure exceeds the demo threshold")));
+    return new Result(
+        check, created, "Thresholds are demonstration values and are not diagnostic.");
+  }
 
-    @GetMapping("/checkups/patient/{id}")
-    @PreAuthorize("hasAnyRole('DIETITIAN','DOCTOR','MEDICAL_CENTER_COORDINATOR') or (hasRole('PATIENT') and principal == #id.toString())")
-    List<HealthCheck> history(@PathVariable String id) { return checks.findByPatientIdOrderByRecordedAtDesc(id); }
+  @GetMapping("/checkups/patient/{id}")
+  @PreAuthorize(
+      "hasAnyRole('DIETITIAN','DOCTOR','MEDICAL_CENTER_COORDINATOR') or (hasRole('PATIENT') and"
+          + " principal == #id.toString())")
+  List<HealthCheck> history(@PathVariable String id) {
+    return checks.findByPatientIdOrderByRecordedAtDesc(id);
+  }
 
-    @GetMapping("/health-alerts")
-    @PreAuthorize("hasAnyRole('DIETITIAN','DOCTOR','MEDICAL_CENTER_COORDINATOR')")
-    List<HealthAlert> alerts() { return alerts.findByStatusOrderByCreatedAtDesc("OPEN"); }
+  @GetMapping("/health-alerts")
+  @PreAuthorize("hasAnyRole('DIETITIAN','DOCTOR','MEDICAL_CENTER_COORDINATOR')")
+  List<HealthAlert> alerts() {
+    return alerts.findByStatusOrderByCreatedAtDesc("OPEN");
+  }
 
-    record CheckRequest(@NotNull String patientId, @Positive BigDecimal weightKg,
-                        @Positive BigDecimal bmi, @Positive Integer systolic, @Positive Integer diastolic,
-                        @Positive BigDecimal bloodSugar, @Positive BigDecimal temperature, String notes) {}
-    record Result(HealthCheck check, List<HealthAlert> alerts, String disclaimer) {}
+  record CheckRequest(
+      @NotNull String patientId,
+      @Positive BigDecimal weightKg,
+      @Positive BigDecimal bmi,
+      @Positive Integer systolic,
+      @Positive Integer diastolic,
+      @Positive BigDecimal bloodSugar,
+      @Positive BigDecimal temperature,
+      String notes) {}
+
+  record Result(HealthCheck check, List<HealthAlert> alerts, String disclaimer) {}
 }

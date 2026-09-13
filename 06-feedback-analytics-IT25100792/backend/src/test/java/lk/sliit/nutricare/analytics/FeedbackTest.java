@@ -1,1 +1,14 @@
-package lk.sliit.nutricare.analytics;import static org.junit.jupiter.api.Assertions.*;import java.util.UUID;import org.junit.jupiter.api.Test;class FeedbackTest{@Test void storesValidRating(){var f=new Feedback("P001","D001",UUID.randomUUID(),2,"Needs follow-up");assertEquals(2,f.getRating());}}
+package lk.sliit.nutricare.analytics;
+
+import static org.junit.jupiter.api.Assertions.*;
+
+import java.util.UUID;
+import org.junit.jupiter.api.Test;
+
+class FeedbackTest {
+  @Test
+  void storesValidRating() {
+    var f = new Feedback("P001", "D001", UUID.randomUUID(), 2, "Needs follow-up");
+    assertEquals(2, f.getRating());
+  }
+}

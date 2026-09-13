@@ -51,12 +51,15 @@ export async function login(email: string, password: string): Promise<Session> {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email, password }),
-      signal: AbortSignal.timeout(1800),
+      signal: AbortSignal.timeout(10000),
     });
     if (!response.ok) throw new Error((await response.json().catch(() => ({}))).message ?? "Invalid email or password");
     const result = await response.json();
     return { token: result.token, user: result.user, demo: false };
   } catch (error) {
+    if (error instanceof TypeError || (error instanceof DOMException && error.name === "TimeoutError")) {
+      throw new Error("Cannot reach the NutriCare backend. Confirm Spring Boot is running on port 8080.");
+    }
     throw error instanceof Error ? error : new Error("Unable to sign in");
   }
 }
@@ -216,25 +219,84 @@ export async function logout(session: Session) {
   await fetch(`${API_BASE}/auth/logout`, { method: "POST", headers: { Authorization: `Bearer ${session.token}` } }).catch(() => undefined);
 }
 
-/* ── Notifications ── */
+/* ── Messages & notifications ── */
+export type SecureMessage = {
+  id: string;
+  senderId: string;
+  recipientId: string;
+  patientId: string;
+  body: string;
+  sentAt: string;
+};
+
+export type DeliveryNotice = {
+  id: string;
+  recipientId: string;
+  type: string;
+  channel: string;
+  message: string;
+  status: string;
+  createdAt: string;
+};
+
+export function fetchMessages(session: Session, patientId: string): Promise<SecureMessage[]> {
+  return authenticated(session, `/messages/patient/${patientId}`);
+}
+
+export function sendSecureMessage(session: Session, details: {
+  senderId: string; recipientId: string; patientId: string; body: string;
+}): Promise<SecureMessage> {
+  return authenticated(session, "/messages", { method: "POST", body: JSON.stringify(details) });
+}
+
+export function fetchDeliveryNotices(session: Session, recipientId: string): Promise<DeliveryNotice[]> {
+  return authenticated(session, `/notifications/recipient/${recipientId}`);
+}
+
+export function createDeliveryNotice(session: Session, details: {
+  recipientId: string; type: string; channel: "IN_APP" | "EMAIL" | "SMS"; message: string; simulateFailure?: boolean;
+}): Promise<DeliveryNotice> {
+  return authenticated(session, "/notifications", { method: "POST", body: JSON.stringify(details) });
+}
+
+export type FeedbackResult = {
+  feedback: { id: string; patientId: string; practitionerId: string; appointmentId: string; rating: number; comments?: string };
+  complaint?: { id: string; feedbackId: string; priority: string; status: string } | null;
+};
+
+export type ReportSummary = {
+  from: string; to: string; users: number; appointments: number; completedPayments: number;
+  openAlerts: number; publishedPlans: number; feedback: number; averageRating: number;
+};
+
+export type Complaint = { id: string; feedbackId: string; priority: string; status: string; createdAt?: string };
+
+export function submitFeedback(session: Session, details: {
+  patientId: string; practitionerId: string; appointmentId: string; rating: number; comments?: string;
+}): Promise<FeedbackResult> {
+  return authenticated(session, "/feedback", { method: "POST", body: JSON.stringify(details) });
+}
+
+export function fetchComplaints(session: Session): Promise<Complaint[]> {
+  return authenticated(session, "/complaints");
+}
+
+export function fetchReportSummary(session: Session, from: string, to: string): Promise<ReportSummary> {
+  return authenticated(session, `/reports/summary?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`);
+}
+
 export async function fetchNotifications(session: Session): Promise<Notification[]> {
   if (!session.token) return [];
   try {
-    const response = await fetch(`${API_BASE}/notifications/recipient/${session.user.id}`, {
-      headers: { Authorization: `Bearer ${session.token}` },
-      signal: AbortSignal.timeout(2000),
-    });
-    if (response.ok) {
-      const items = await response.json() as Array<{ id: string; type: string; message: string; status?: string; createdAt?: string }>;
-      return items.map(item => ({
-        id: item.id,
-        type: item.type,
-        message: item.message,
-        time: item.createdAt ? new Date(item.createdAt).toLocaleString() : "",
-        read: item.status === "READ",
-      }));
-    }
-  } catch { /* fall through to seed */ }
+    const items = await fetchDeliveryNotices(session, session.user.id);
+    return items.map(item => ({
+      id: item.id,
+      type: item.type,
+      message: item.message,
+      time: item.createdAt ? new Date(item.createdAt).toLocaleString() : "",
+      read: item.status === "READ",
+    }));
+  } catch { /* fall through */ }
   return [];
 }
 
