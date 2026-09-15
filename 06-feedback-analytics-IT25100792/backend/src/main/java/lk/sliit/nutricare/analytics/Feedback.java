@@ -34,13 +34,36 @@ public class Feedback {
 
   public Feedback(
       String patientId, String practitionerId, UUID appointmentId, int rating, String comments) {
+    if (patientId == null || patientId.isBlank()) {
+      throw new IllegalArgumentException("patientId is required");
+    }
+    if (practitionerId == null || practitionerId.isBlank()) {
+      throw new IllegalArgumentException("practitionerId is required");
+    }
+    if (appointmentId == null) {
+      throw new IllegalArgumentException("appointmentId is required");
+    }
     id = UUID.randomUUID();
     this.patientId = patientId;
     this.practitionerId = practitionerId;
     this.appointmentId = appointmentId;
-    this.rating = rating;
-    this.comments = comments;
+    apply(rating, comments);
     createdAt = Instant.now();
+  }
+
+  public void update(int rating, String comments) {
+    apply(rating, comments);
+  }
+
+  private void apply(int rating, String comments) {
+    if (rating < 1 || rating > 5) {
+      throw new IllegalArgumentException("rating must be between 1 and 5");
+    }
+    if (comments != null && comments.length() > 1500) {
+      throw new IllegalArgumentException("comments must be at most 1500 characters");
+    }
+    this.rating = rating;
+    this.comments = comments == null || comments.isBlank() ? null : comments.trim();
   }
 
   public UUID getId() {

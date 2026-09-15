@@ -14,7 +14,7 @@ export type SessionUser = {
 
 export type Session = { token: string | null; user: SessionUser; demo: boolean };
 
-/** Absolute/idle client session window — aligned with JWT lifetime. */
+/** Absolute/idle client session window Ã¢â‚¬â€ aligned with JWT lifetime. */
 export const SESSION_TTL_MS = 30 * 60 * 1000;
 const SESSION_STORAGE_KEY = "nutricare.session";
 
@@ -117,7 +117,7 @@ export type HealthCheckResult = { check: HealthCheck; alerts: Array<{ id: string
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? import.meta.env.VITE_API_URL ?? "/api/v1";
 
-/* ── Authentication ── */
+/* Ã¢â€â‚¬Ã¢â€â‚¬ Authentication Ã¢â€â‚¬Ã¢â€â‚¬ */
 export async function login(email: string, password: string): Promise<Session> {
   try {
     const response = await fetch(`${API_BASE}/auth/login`, {
@@ -253,6 +253,26 @@ export function fetchWorkspaceSlots(session: Session, date: string): Promise<Wor
 export function holdAppointment(session: Session, details: { slotId: string; patientId: string; serviceType: string; amount: number }) {
   return authenticated(session, "/appointments/hold", { method: "POST", body: JSON.stringify(details) });
 }
+export function createAvailabilitySlot(session: Session, details: { practitionerId?: string; startTime: string; durationMinutes: number }) {
+  return authenticated(session, "/workspace/slots", { method: "POST", body: JSON.stringify(details) });
+}
+
+export function updateAvailabilitySlot(session: Session, id: string, details: { startTime: string; durationMinutes: number }) {
+  return authenticated(session, `/workspace/slots/${id}`, { method: "PUT", body: JSON.stringify(details) });
+}
+
+export async function deleteAvailabilitySlot(session: Session, id: string): Promise<void> {
+  await authenticated(session, `/workspace/slots/${id}`, { method: "DELETE" });
+}
+
+export async function cancelAppointment(session: Session, id: string): Promise<void> {
+  await authenticated(session, `/appointments/${id}/cancel`, { method: "POST" });
+}
+
+export function payAppointment(session: Session, id: string, details: { amount: number; method: string; status: string }) {
+  return authenticated(session, `/appointments/${id}/payments`, { method: "POST", body: JSON.stringify(details) });
+}
+
 
 export function createDietPlan(session: Session, plan: { patientId: string; title: string; calorieTarget: number; exclusions?: string; mealSchedule: string }): Promise<DietPlan> {
   return authenticated(session, "/diet-plans", { method: "POST", body: JSON.stringify(plan) });
@@ -280,7 +300,7 @@ export function createHealthCheck(session: Session, check: {
   });
 }
 
-/* ── Profile ── */
+/* Ã¢â€â‚¬Ã¢â€â‚¬ Profile Ã¢â€â‚¬Ã¢â€â‚¬ */
 export async function updateProfile(session: Session, updates: Partial<SessionUser>): Promise<Session> {
   if (!session.token) return { ...session, user: { ...session.user, ...updates } };
   const response = await fetch(`${API_BASE}/users/me`, {
@@ -294,14 +314,14 @@ export async function updateProfile(session: Session, updates: Partial<SessionUs
   return next;
 }
 
-/* ── Session ── */
+/* Ã¢â€â‚¬Ã¢â€â‚¬ Session Ã¢â€â‚¬Ã¢â€â‚¬ */
 export async function logout(session: Session) {
   clearStoredSession();
   if (!session.token) return;
   await fetch(`${API_BASE}/auth/logout`, { method: "POST", headers: { Authorization: `Bearer ${session.token}` } }).catch(() => undefined);
 }
 
-/* ── Messages & notifications ── */
+/* Ã¢â€â‚¬Ã¢â€â‚¬ Messages & notifications Ã¢â€â‚¬Ã¢â€â‚¬ */
 export type SecureMessage = {
   id: string;
   senderId: string;
@@ -341,8 +361,18 @@ export function createDeliveryNotice(session: Session, details: {
   return authenticated(session, "/notifications", { method: "POST", body: JSON.stringify(details) });
 }
 
+export type FeedbackEntry = {
+  id: string;
+  patientId: string;
+  practitionerId: string;
+  appointmentId: string;
+  rating: number;
+  comments?: string;
+  createdAt?: string;
+};
+
 export type FeedbackResult = {
-  feedback: { id: string; patientId: string; practitionerId: string; appointmentId: string; rating: number; comments?: string };
+  feedback: FeedbackEntry;
   complaint?: { id: string; feedbackId: string; priority: string; status: string } | null;
 };
 
@@ -359,6 +389,20 @@ export function submitFeedback(session: Session, details: {
   return authenticated(session, "/feedback", { method: "POST", body: JSON.stringify(details) });
 }
 
+export function fetchPatientFeedback(session: Session, patientId: string): Promise<FeedbackEntry[]> {
+  return authenticated(session, `/feedback/patient/${patientId}`);
+}
+
+export function updateFeedback(session: Session, id: string, details: {
+  rating: number; comments?: string;
+}): Promise<FeedbackResult> {
+  return authenticated(session, `/feedback/${id}`, { method: "PUT", body: JSON.stringify(details) });
+}
+
+export function deleteFeedback(session: Session, id: string): Promise<void> {
+  return authenticated(session, `/feedback/${id}`, { method: "DELETE" });
+}
+
 export function fetchComplaints(session: Session): Promise<Complaint[]> {
   return authenticated(session, "/complaints");
 }
@@ -367,7 +411,7 @@ export function fetchReportSummary(session: Session, from: string, to: string): 
   return authenticated(session, `/reports/summary?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`);
 }
 
-/* ── Admin email test ── */
+/* Ã¢â€â‚¬Ã¢â€â‚¬ Admin email test Ã¢â€â‚¬Ã¢â€â‚¬ */
 export type MailStatus = {
   liveEmailEnabled: boolean;
   fromAddress: string;
@@ -413,7 +457,7 @@ export async function fetchNotifications(session: Session): Promise<Notification
   return [];
 }
 
-/* ── Patient guide ── */
+/* Ã¢â€â‚¬Ã¢â€â‚¬ Patient guide Ã¢â€â‚¬Ã¢â€â‚¬ */
 export type GuideMessage = { from: string; text: string };
 type GuideReply = { answer: string; suggestedDestinations: string[]; source: "GEMINI" | "LOCAL"; urgency?: "EMERGENCY" | "URGENT" | "ROUTINE"; emergencyNumber?: string };
 
@@ -443,7 +487,7 @@ const feedbackSteps = [
   "Click \"Reports & feedback\" in the left sidebar.",
   "Under \"Record feedback\", select a star rating from 1 to 5.",
   "Write your comments or complaint in the text box.",
-  "Click \"Submit feedback\" — if the rating is 2 or below, a complaint ticket is created automatically.",
+  "Click \"Submit feedback\" Ã¢â‚¬â€ if the rating is 2 or below, a complaint ticket is created automatically.",
 ];
 
 type TopicKey = "profile" | "appointments" | "diet" | "health" | "messages" | "feedback" | "emergency" | null;
@@ -494,7 +538,7 @@ export async function askPatientGuide(session: Session, question: string, histor
 
   const text = question.toLowerCase().trim();
 
-  /* Emergency — always takes priority */
+  /* Emergency Ã¢â‚¬â€ always takes priority */
   if (detectTopic(text) === "emergency") {
     lastTopic = null;
     lastStep = -1;
@@ -536,7 +580,7 @@ export async function askPatientGuide(session: Session, question: string, histor
         return { answer: doneMsg, suggestedDestinations: [], source: "LOCAL" };
       }
     } else {
-      /* Topic has no steps — provide a helpful response */
+      /* Topic has no steps Ã¢â‚¬â€ provide a helpful response */
       lastTopic = null;
       lastStep = -1;
       return { answer: "You can explore that section from the sidebar. Let me know if you have a specific question!", suggestedDestinations: [], source: "LOCAL" };
@@ -547,16 +591,17 @@ export async function askPatientGuide(session: Session, question: string, histor
 
   /* Greetings */
   if (/^(hi|hello|hey|good morning|good afternoon|good evening|howdy|sup)[\s!?.]*$/i.test(text)) {
-    return { answer: "Hello! 👋 I can help you with appointments, health records, diet plans, messages, feedback, or your profile. What would you like to know?", suggestedDestinations: [], source: "LOCAL" };
+    return { answer: "Hello! Ã°Å¸â€˜â€¹ I can help you with appointments, health records, diet plans, messages, feedback, or your profile. What would you like to know?", suggestedDestinations: [], source: "LOCAL" };
   }
 
   /* Thank you */
   if (/^(thanks|thank you|thx|ty|cheers|appreciate)[\s!?.]*$/i.test(text)) {
-    return { answer: "You're welcome! Let me know if you need anything else. 😊", suggestedDestinations: [], source: "LOCAL" };
+    return { answer: "You're welcome! Let me know if you need anything else. Ã°Å¸ËœÅ ", suggestedDestinations: [], source: "LOCAL" };
   }
 
   /* Generic fallback */
   lastTopic = null;
   lastStep = -1;
-  return { answer: "I can help you with:\n\n• **Appointments** — booking, rescheduling\n• **Health checks** — viewing your vitals\n• **Diet & progress** — meal plans, water tracking\n• **Messages** — contacting your care team\n• **Feedback** — rating consultations\n• **Profile** — updating your details\n\nWhat would you like to do?", suggestedDestinations: [], source: "LOCAL" };
+  return { answer: "I can help you with:\n\nÃ¢â‚¬Â¢ **Appointments** Ã¢â‚¬â€ booking, rescheduling\nÃ¢â‚¬Â¢ **Health checks** Ã¢â‚¬â€ viewing your vitals\nÃ¢â‚¬Â¢ **Diet & progress** Ã¢â‚¬â€ meal plans, water tracking\nÃ¢â‚¬Â¢ **Messages** Ã¢â‚¬â€ contacting your care team\nÃ¢â‚¬Â¢ **Feedback** Ã¢â‚¬â€ rating consultations\nÃ¢â‚¬Â¢ **Profile** Ã¢â‚¬â€ updating your details\n\nWhat would you like to do?", suggestedDestinations: [], source: "LOCAL" };
 }
+

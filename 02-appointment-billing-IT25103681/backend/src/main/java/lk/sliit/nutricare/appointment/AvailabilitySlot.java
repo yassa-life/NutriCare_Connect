@@ -32,10 +32,14 @@ public class AvailabilitySlot {
   protected AvailabilitySlot() {}
 
   public AvailabilitySlot(String practitionerId, LocalDateTime start) {
+    this(practitionerId, start, 60);
+  }
+
+  public AvailabilitySlot(String practitionerId, LocalDateTime start, int durationMinutes) {
     id = UUID.randomUUID();
     this.practitionerId = practitionerId;
     startTime = start;
-    durationMinutes = 60;
+    this.durationMinutes = durationMinutes;
     status = "AVAILABLE";
   }
 
@@ -49,6 +53,10 @@ public class AvailabilitySlot {
 
   public LocalDateTime getStartTime() {
     return startTime;
+  }
+
+  public int getDurationMinutes() {
+    return durationMinutes;
   }
 
   public String getStatus() {
@@ -81,5 +89,13 @@ public class AvailabilitySlot {
   public void release() {
     status = "AVAILABLE";
     holdExpiresAt = null;
+  }
+
+  public void reschedule(LocalDateTime start, int durationMinutes) {
+    if (!"AVAILABLE".equals(status)) {
+      throw new IllegalStateException("Only available slots can be edited");
+    }
+    startTime = start;
+    this.durationMinutes = durationMinutes;
   }
 }

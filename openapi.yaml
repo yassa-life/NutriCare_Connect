@@ -211,6 +211,24 @@ paths:
       summary: Save rating and automatically escalate low scores
       requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/FeedbackRequest' } } } }
       responses: { '201': { description: Feedback and optional complaint } }
+  /feedback/patient/{id}:
+    get:
+      tags: [Analytics]
+      summary: List feedback submitted by a patient
+      parameters: [{ $ref: '#/components/parameters/AccountId' }]
+      responses: { '200': { description: Patient feedback entries } }
+  /feedback/{id}:
+    put:
+      tags: [Analytics]
+      summary: Update own feedback rating and comments
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/FeedbackUpdateRequest' } } } }
+      responses: { '200': { description: Updated feedback and optional complaint } }
+    delete:
+      tags: [Analytics]
+      summary: Delete own feedback and linked complaint
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      responses: { '204': { description: Feedback removed } }
   /complaints:
     get: { tags: [Analytics], summary: List complaint tickets, responses: { '200': { description: Complaints } } }
   /reports/summary:
@@ -276,3 +294,7 @@ components:
       type: object
       required: [patientId,practitionerId,appointmentId,rating]
       properties: { patientId: { $ref: '#/components/schemas/AccountId' }, practitionerId: { $ref: '#/components/schemas/AccountId' }, appointmentId: { type: string, format: uuid }, rating: { type: integer, minimum: 1, maximum: 5 }, comments: { type: string, maxLength: 1500 } }
+    FeedbackUpdateRequest:
+      type: object
+      required: [rating]
+      properties: { rating: { type: integer, minimum: 1, maximum: 5 }, comments: { type: string, maxLength: 1500 } }

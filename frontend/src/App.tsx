@@ -20,7 +20,7 @@ import {
   X,
 } from "lucide-react";
 import { LoginScreen, ProfileModal, RequiredPasswordChange } from "./AccountExperience";
-import { askPatientGuide, clearStoredSession, createDeliveryNotice, createDietPlan, createHealthCheck, fetchComplaints, fetchDeliveryNotices, fetchDietPlans, fetchHealthChecks, fetchMailAttempts, fetchMailStatus, fetchMessages, fetchNotifications, fetchProgressLogs, fetchReportSummary, fetchUsers, fetchWorkspaceAppointments, fetchWorkspacePeople, fetchWorkspaceSlots, holdAppointment, loadStoredSession, logout, Notification, provisionStaff, Role, sendAdminMailTest, sendSecureMessage, Session, setUserEnabled, storedSessionRemainingMs, submitFeedback, touchStoredSession, WorkspaceAppointment } from "./api";
+import { askPatientGuide, clearStoredSession, createDeliveryNotice, createDietPlan, createHealthCheck, deleteFeedback, fetchComplaints, fetchDeliveryNotices, fetchDietPlans, fetchHealthChecks, fetchMailAttempts, fetchMailStatus, fetchMessages, fetchNotifications, fetchPatientFeedback, fetchProgressLogs, fetchReportSummary, fetchUsers, fetchWorkspaceAppointments, fetchWorkspacePeople, fetchWorkspaceSlots, cancelAppointment, createAvailabilitySlot, deleteAvailabilitySlot, holdAppointment, loadStoredSession, payAppointment, updateAvailabilitySlot, logout, Notification, provisionStaff, Role, sendAdminMailTest, sendSecureMessage, Session, setUserEnabled, storedSessionRemainingMs, submitFeedback, touchStoredSession, updateFeedback, WorkspaceAppointment } from "./api";
 const UserAccessFeature = lazy(() => import("@nutricare/user-access").then((module) => ({ default: module.UserAccessFeature })));
 const AppointmentBillingFeature = lazy(() => import("@nutricare/appointment-billing").then((module) => ({ default: module.AppointmentBillingFeature })));
 const HealthCheckFeature = lazy(() => import("@nutricare/health-check").then((module) => ({ default: module.HealthCheckFeature })));
@@ -67,7 +67,7 @@ const rolePages: Record<Role, Page[]> = {
   PATIENT: ["overview", "appointments", "health", "diet", "messages", "analytics"],
 };
 
-/* ── Format today's date dynamically ── */
+/* â”€â”€ Format today's date dynamically â”€â”€ */
 function formatToday(): string {
   const now = new Date();
   return now.toLocaleDateString("en-US", { weekday: "long", day: "numeric", month: "long" });
@@ -80,7 +80,7 @@ function getGreeting(): string {
   return "Good evening";
 }
 
-/* ── Notification type icon helper ── */
+/* â”€â”€ Notification type icon helper â”€â”€ */
 function notifIcon(type: string) {
   switch (type) {
     case "APPOINTMENT_REMINDER": return <CalendarDays size={16}/>;
@@ -91,7 +91,7 @@ function notifIcon(type: string) {
   }
 }
 
-/* ── Notification Panel ── */
+/* â”€â”€ Notification Panel â”€â”€ */
 function NotificationPanel({ notifications, onMarkAllRead, onClose }: {
   notifications: Notification[];
   onMarkAllRead: () => void;
@@ -129,7 +129,7 @@ function NotificationPanel({ notifications, onMarkAllRead, onClose }: {
   </div>;
 }
 
-/* ── Patient Overview ── */
+/* â”€â”€ Patient Overview â”€â”€ */
 function PatientOverview({ go, userName, userId, loadAppointments, loadPlans, loadProgress, loadChecks }: { go: (page: Page) => void; userName: string; userId: string; loadAppointments: () => Promise<WorkspaceAppointment[]>; loadPlans: (patientId: string) => ReturnType<typeof fetchDietPlans>; loadProgress: (patientId: string) => ReturnType<typeof fetchProgressLogs>; loadChecks: (patientId: string) => ReturnType<typeof fetchHealthChecks> }) {
   const [appointments, setAppointments] = useState<WorkspaceAppointment[]>([]);
   const [plans, setPlans] = useState<Awaited<ReturnType<typeof fetchDietPlans>>>([]);
@@ -152,11 +152,11 @@ function PatientOverview({ go, userName, userId, loadAppointments, loadPlans, lo
     <section className="welcome"><div><span className="eyebrow">{today}</span><h1>{greeting}, {firstName}.</h1><p>Your personal summary is loaded from your NutriCare records.</p></div><div className="welcome-actions"><span className="live-pill"><i/> Personal care space</span><button className="primary" onClick={() => go("appointments")}><CalendarDays size={18}/> Book a check-up</button></div></section>
     {error && <div className="form-error">{error}</div>}
     <section className="stat-grid" aria-label="My care summary"><article className="stat-card sage"><span>Appointments</span><strong>{appointments.length}</strong><small>Records belonging to your account</small></article><article className="stat-card eucalyptus"><span>Water in latest log</span><strong>{latestProgress?.waterGlasses ?? 0}</strong><small>Saved glasses</small></article><article className="stat-card amber"><span>Diet plans</span><strong>{plans.length}</strong><small>{latestPlan?.status ?? "No plan yet"}</small></article><article className="stat-card fern"><span>Health checks</span><strong>{checks.length}</strong><small>Private saved records</small></article></section>
-    <div className="dashboard-grid"><section className="panel span-2"><div className="panel-title"><div><span className="eyebrow">My next visit</span><h2>{nextAppointment ? `${nextAppointment.serviceType} with ${nextAppointment.practitionerName}` : "No upcoming appointment"}</h2></div>{nextAppointment && <span className={`status ${nextAppointment.status.toLowerCase()}`}>{nextAppointment.status}</span>}</div>{nextAppointment ? <div className="appointment-focus"><span className="calendar-date"><b>{new Date(nextAppointment.startTime).getDate()}</b><small>{new Date(nextAppointment.startTime).toLocaleDateString("en", {month:"short"}).toUpperCase()}</small></span><div><strong>{new Date(nextAppointment.startTime).toLocaleString()}</strong><p>Use Appointments to review your booking and invoice.</p></div><button className="secondary" onClick={() => go("appointments")}>View appointment</button></div> : <p>Book a check-up when you are ready.</p>}</section><section className="panel tip-card"><Leaf size={22}/><div><span className="eyebrow">Latest plan</span><h2>{latestPlan?.title ?? "No diet plan published"}</h2><p>{latestPlan ? `${latestPlan.calorieTarget ?? "—"} kcal · ${latestPlan.status}` : "Your care team has not created a plan for this account."}</p><button className="text-button" onClick={() => go("diet")}>Open my plans</button></div></section><section className="panel span-2"><div className="panel-title"><div><span className="eyebrow">My recent check</span><h2>Personal health summary</h2></div><button className="text-button" onClick={() => go("health")}>View my records</button></div><div className="metric-row"><article className="metric"><span>Weight</span><strong>{latestCheck?.weightKg ?? "—"} kg</strong></article><article className="metric"><span>BMI</span><strong>{latestCheck?.bmi ?? "—"}</strong></article><article className="metric"><span>Recorded</span><strong>{latestCheck ? new Date(latestCheck.recordedAt).toLocaleDateString() : "—"}</strong></article></div><div className="patient-safety-note"><ShieldCheck size={16}/> Only you and authorized members of your care team can see these records.</div></section><section className="panel care-pulse"><div className="care-ring"><span><b>{latestProgress?.mealsCompleted ?? 0}</b><small>meals</small></span></div><div><span className="eyebrow">Latest progress log</span><h2>{latestProgress ? `${latestProgress.weightKg ?? "—"} kg` : "No progress yet"}</h2><p>{latestProgress ? new Date(latestProgress.logDate).toLocaleDateString() : "Your saved progress will appear here."}</p></div></section></div>
+    <div className="dashboard-grid"><section className="panel span-2"><div className="panel-title"><div><span className="eyebrow">My next visit</span><h2>{nextAppointment ? `${nextAppointment.serviceType} with ${nextAppointment.practitionerName}` : "No upcoming appointment"}</h2></div>{nextAppointment && <span className={`status ${nextAppointment.status.toLowerCase()}`}>{nextAppointment.status}</span>}</div>{nextAppointment ? <div className="appointment-focus"><span className="calendar-date"><b>{new Date(nextAppointment.startTime).getDate()}</b><small>{new Date(nextAppointment.startTime).toLocaleDateString("en", {month:"short"}).toUpperCase()}</small></span><div><strong>{new Date(nextAppointment.startTime).toLocaleString()}</strong><p>Use Appointments to review your booking and invoice.</p></div><button className="secondary" onClick={() => go("appointments")}>View appointment</button></div> : <p>Book a check-up when you are ready.</p>}</section><section className="panel tip-card"><Leaf size={22}/><div><span className="eyebrow">Latest plan</span><h2>{latestPlan?.title ?? "No diet plan published"}</h2><p>{latestPlan ? `${latestPlan.calorieTarget ?? "â€”"} kcal Â· ${latestPlan.status}` : "Your care team has not created a plan for this account."}</p><button className="text-button" onClick={() => go("diet")}>Open my plans</button></div></section><section className="panel span-2"><div className="panel-title"><div><span className="eyebrow">My recent check</span><h2>Personal health summary</h2></div><button className="text-button" onClick={() => go("health")}>View my records</button></div><div className="metric-row"><article className="metric"><span>Weight</span><strong>{latestCheck?.weightKg ?? "â€”"} kg</strong></article><article className="metric"><span>BMI</span><strong>{latestCheck?.bmi ?? "â€”"}</strong></article><article className="metric"><span>Recorded</span><strong>{latestCheck ? new Date(latestCheck.recordedAt).toLocaleDateString() : "â€”"}</strong></article></div><div className="patient-safety-note"><ShieldCheck size={16}/> Only you and authorized members of your care team can see these records.</div></section><section className="panel care-pulse"><div className="care-ring"><span><b>{latestProgress?.mealsCompleted ?? 0}</b><small>meals</small></span></div><div><span className="eyebrow">Latest progress log</span><h2>{latestProgress ? `${latestProgress.weightKg ?? "â€”"} kg` : "No progress yet"}</h2><p>{latestProgress ? new Date(latestProgress.logDate).toLocaleDateString() : "Your saved progress will appear here."}</p></div></section></div>
   </div>;
 }
 
-/* ── Staff Overview ── */
+/* â”€â”€ Staff Overview â”€â”€ */
 function Overview({ go, role, userName, userId, loadAppointments, loadPlans, loadProgress, loadChecks }: { go: (page: Page) => void; role: Role; userName: string; userId: string; loadAppointments: () => Promise<WorkspaceAppointment[]>; loadPlans: (patientId: string) => ReturnType<typeof fetchDietPlans>; loadProgress: (patientId: string) => ReturnType<typeof fetchProgressLogs>; loadChecks: (patientId: string) => ReturnType<typeof fetchHealthChecks> }) {
   const [appointments, setAppointments] = useState<WorkspaceAppointment[]>([]);
   const [loadError, setLoadError] = useState("");
@@ -215,7 +215,7 @@ function Overview({ go, role, userName, userId, loadAppointments, loadPlans, loa
   );
 }
 
-/* ──────────────────────────── App Shell ──────────────────────────── */
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ App Shell â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
 export function App() {
   const [session, setSession] = useState<Session | null>(() => loadStoredSession());
@@ -305,6 +305,11 @@ export function App() {
   const loadAppointments = useCallback(() => fetchWorkspaceAppointments(requireSession()), [requireSession]);
   const loadSlots = useCallback((date: string) => fetchWorkspaceSlots(requireSession(), date), [requireSession]);
   const createBooking = useCallback((details: { slotId: string; patientId: string; serviceType: string; amount: number }) => holdAppointment(requireSession(), details), [requireSession]);
+  const createSlot = useCallback((details: { practitionerId?: string; startTime: string; durationMinutes: number }) => createAvailabilitySlot(requireSession(), details), [requireSession]);
+  const updateSlot = useCallback((id: string, details: { startTime: string; durationMinutes: number }) => updateAvailabilitySlot(requireSession(), id, details), [requireSession]);
+  const deleteSlot = useCallback((id: string) => deleteAvailabilitySlot(requireSession(), id), [requireSession]);
+  const cancelBooking = useCallback((id: string) => cancelAppointment(requireSession(), id), [requireSession]);
+  const payBooking = useCallback((id: string, details: { amount: number; method: string; status: string }) => payAppointment(requireSession(), id, details), [requireSession]);
   const loadPlans = useCallback((patientId: string) => fetchDietPlans(requireSession(), patientId), [requireSession]);
   const loadProgress = useCallback((patientId: string) => fetchProgressLogs(requireSession(), patientId), [requireSession]);
   const savePlan = useCallback((plan: { patientId: string; title: string; calorieTarget: number; exclusions?: string; mealSchedule: string }) => createDietPlan(requireSession(), plan), [requireSession]);
@@ -315,6 +320,9 @@ export function App() {
   const loadNotices = useCallback((recipientId: string) => fetchDeliveryNotices(requireSession(), recipientId), [requireSession]);
   const postNotice = useCallback((details: { recipientId: string; type: string; channel: "IN_APP" | "EMAIL" | "SMS"; message: string; simulateFailure?: boolean }) => createDeliveryNotice(requireSession(), details), [requireSession]);
   const postFeedback = useCallback((details: { patientId: string; practitionerId: string; appointmentId: string; rating: number; comments?: string }) => submitFeedback(requireSession(), details), [requireSession]);
+  const loadFeedback = useCallback((patientId: string) => fetchPatientFeedback(requireSession(), patientId), [requireSession]);
+  const editFeedback = useCallback((id: string, details: { rating: number; comments?: string }) => updateFeedback(requireSession(), id, details), [requireSession]);
+  const removeFeedback = useCallback((id: string) => deleteFeedback(requireSession(), id), [requireSession]);
   const loadComplaints = useCallback(() => fetchComplaints(requireSession()), [requireSession]);
   const loadReport = useCallback((from: string, to: string) => fetchReportSummary(requireSession(), from, to), [requireSession]);
   const loadMailStatus = useCallback(() => fetchMailStatus(requireSession()), [requireSession]);
@@ -356,7 +364,7 @@ export function App() {
         <header className="topbar">
           <div className="topbar-title"><button className="icon mobile-only" onClick={() => setMenuOpen(true)} aria-label="Open menu"><Menu /></button><current.icon size={20} /><strong>{current.label}</strong></div>
           <div className="topbar-actions">
-            <label className="search"><Search size={17} /><input aria-label="Search patients" placeholder="Search patients…" /></label>
+            <label className="search"><Search size={17} /><input aria-label="Search patients" placeholder="Search patientsâ€¦" /></label>
             <div className="notify-area">
               <button className="icon notify" aria-label="Notifications" onClick={() => setNotifyOpen(v => !v)}>
                 <Bell size={19} />
@@ -368,14 +376,14 @@ export function App() {
           </div>
         </header>
         <div className="content">
-          <Suspense fallback={<section className="panel empty">Preparing your care workspace…</section>}>
+          <Suspense fallback={<section className="panel empty">Preparing your care workspaceâ€¦</section>}>
             {page === "overview" && <Overview go={setPage} role={role} userName={session.user.fullName} userId={session.user.id} loadAppointments={loadAppointments} loadPlans={loadPlans} loadProgress={loadProgress} loadChecks={loadChecks} />}
             {page === "users" && <UserAccessFeature isAdmin={role === "SYSTEM_ADMIN"} onProvision={(details) => provisionStaff(session, details.fullName, details.email, details.role)} onLoadUsers={loadUsers} onToggleUser={toggleUser} />}
-            {page === "appointments" && <AppointmentBillingFeature role={role} currentUserId={session.user.id} userName={session.user.fullName} loadAppointments={loadAppointments} loadSlots={loadSlots} loadPeople={loadPeople} createBooking={createBooking} />}
+            {page === "appointments" && <AppointmentBillingFeature role={role} currentUserId={session.user.id} userName={session.user.fullName} loadAppointments={loadAppointments} loadSlots={loadSlots} loadPeople={loadPeople} createBooking={createBooking} createSlot={createSlot} updateSlot={updateSlot} deleteSlot={deleteSlot} cancelAppointment={cancelBooking} payAppointment={payBooking} />}
             {page === "health" && <HealthCheckFeature patientOnly={role === "PATIENT"} userName={session.user.fullName} currentUserId={session.user.id} loadPeople={loadPeople} loadChecks={loadChecks} saveCheck={saveCheck} />}
             {page === "diet" && <DietProgressFeature canManagePlans={role === "DIETITIAN" || role === "DOCTOR"} currentUserId={session.user.id} loadPeople={loadPeople} loadPlans={loadPlans} loadProgress={loadProgress} savePlan={savePlan} />}
             {page === "messages" && <MessagingRemindersFeature patientOnly={role === "PATIENT"} currentUserId={session.user.id} userName={session.user.fullName} loadPeople={loadPeople} loadMessages={loadMessages} sendMessage={postMessage} loadNotices={loadNotices} createNotice={postNotice} />}
-            {page === "analytics" && <FeedbackAnalyticsFeature patientOnly={role === "PATIENT"} currentUserId={session.user.id} loadAppointments={loadAppointments} loadPeople={loadPeople} submitFeedback={postFeedback} loadComplaints={loadComplaints} loadReport={loadReport} />}
+            {page === "analytics" && <FeedbackAnalyticsFeature patientOnly={role === "PATIENT"} currentUserId={session.user.id} loadAppointments={loadAppointments} loadFeedback={loadFeedback} submitFeedback={postFeedback} updateFeedback={editFeedback} deleteFeedback={removeFeedback} loadComplaints={loadComplaints} loadReport={loadReport} />}
             {page === "email" && role === "SYSTEM_ADMIN" && <EmailTestFeature defaultEmail={session.user.email} loadStatus={loadMailStatus} loadAttempts={loadMailAttempts} sendTest={postMailTest} />}
           </Suspense>
         </div>
@@ -385,3 +393,4 @@ export function App() {
     </div>
   );
 }
+

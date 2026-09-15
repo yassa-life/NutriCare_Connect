@@ -7,12 +7,21 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
+import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -28,8 +37,7 @@ public class WorkspaceController {
   @PreAuthorize(
       "hasAnyRole('DIETITIAN','DOCTOR','RECEPTION_STAFF','SYSTEM_ADMIN','MEDICAL_CENTER_COORDINATOR','PATIENT')")
   public List<PersonView> people(Authentication authentication) {
-    String role =
-        authentication.getAuthorities().iterator().next().getAuthority().replace("ROLE_", "");
+    String role = roleOf(authentication);
     String sql =
         """
         SELECT id, full_name, role, enabled
@@ -37,9 +45,12 @@ public class WorkspaceController {
         WHERE enabled = TRUE
         """;
     Object[] parameters = new Object[0];
-    if ("DOCTOR".equals(role) || "DIETITIAN".equals(role) || "RECEPTION_STAFF".equals(role)) {
+    if ("DOCTOR".equals(role) || "DIETITIAN".equals(role)) {
       sql += " AND role = ?";
       parameters = new Object[] {"PATIENT"};
+    } else if ("RECEPTION_STAFF".equals(role)) {
+      sql += " AND role IN (?, ?, ?)";
+      parameters = new Object[] {"PATIENT", "DIETITIAN", "DOCTOR"};
     } else if ("PATIENT".equals(role)) {
       sql += " AND role IN (?, ?)";
       parameters = new Object[] {"DIETITIAN", "DOCTOR"};
@@ -58,8 +69,7 @@ public class WorkspaceController {
 
   @GetMapping("/appointments")
   public List<AppointmentView> appointments(Authentication authentication) {
-    String role =
-        authentication.getAuthorities().iterator().next().getAuthority().replace("ROLE_", "");
+    String role = roleOf(authentication);
     String sql =
         """
         SELECT a.id, a.patient_id, patient.full_name patient_name,
@@ -101,8 +111,7 @@ public class WorkspaceController {
 
   @GetMapping("/slots")
   public List<SlotView> slots(Authentication authentication, @RequestParam LocalDate date) {
-    String role =
-        authentication.getAuthorities().iterator().next().getAuthority().replace("ROLE_", "");
+    String role = roleOf(authentication);
     String sql =
         """
         SELECT s.id, s.practitioner_id, u.full_name practitioner_name,
@@ -135,6 +144,92 @@ public class WorkspaceController {
         parameters);
   }
 
+  @PostMapping("/slots")
+  @PreAuthorize(
+      "hasAnyRole('DOCTOR','DIETITIAN','RECEPTION_STAFF','SYSTEM_ADMIN','MEDICAL_CENTER_COORDINATOR')")
+  @ResponseStatus(HttpStatus.CREATED)
+  public SlotView createSlot(Authentication authentication, @RequestBody CreateSlotRequest request) {
+    String role = roleOf(authentication);
+    String practitionerId = request.practitionerId();
+    if ("DOCTOR".equals(role) || "DIETITIAN".equals(role)) {
+      practitionerId = authentication.getName();
+    }
+    if (practitionerId == null || practitionerId.isBlank()) {
+      throw new IllegalArgumentException("Select a practitioner for the slot");
+    }
+    LocalDateTime start = requireFutureStart(request.startTime());
+    int duration = request.durationMinutes() == null ? 60 : request.durationMinutes();
+    validateDuration(duration);
+    ensurePractitioner(practitionerId);
+
+    assertNoOverlap(practitionerId, start, duration, null);
+
+    String id = UUID.randomUUID().toString();
+    jdbc.update(
+        """
+        INSERT INTO availability_slots
+          (id, practitioner_id, start_time, duration_minutes, status, hold_expires_at, version)
+        VALUES (?, ?, ?, ?, 'AVAILABLE', NULL, 0)
+        """,
+        id,
+        practitionerId,
+        Timestamp.valueOf(start),
+        duration);
+    return loadSlot(id);
+  }
+
+  @PutMapping("/slots/{id}")
+  @PreAuthorize(
+      "hasAnyRole('DOCTOR','DIETITIAN','RECEPTION_STAFF','SYSTEM_ADMIN','MEDICAL_CENTER_COORDINATOR')")
+  public SlotView updateSlot(
+      Authentication authentication,
+      @PathVariable String id,
+      @RequestBody UpdateSlotRequest request) {
+    SlotView existing = loadSlot(id);
+    requireSlotManageAccess(authentication, existing.practitionerId());
+    if (!"AVAILABLE".equals(existing.status())) {
+      throw new IllegalStateException("Only available slots can be edited");
+    }
+    LocalDateTime start = requireFutureStart(request.startTime());
+    int duration =
+        request.durationMinutes() == null ? existing.durationMinutes() : request.durationMinutes();
+    validateDuration(duration);
+
+    assertNoOverlap(existing.practitionerId(), start, duration, id);
+
+    int updated =
+        jdbc.update(
+            """
+            UPDATE availability_slots
+            SET start_time = ?, duration_minutes = ?
+            WHERE id = ? AND status = 'AVAILABLE'
+            """,
+            Timestamp.valueOf(start),
+            duration,
+            id);
+    if (updated == 0) {
+      throw new IllegalStateException("Only available slots can be edited");
+    }
+    return loadSlot(id);
+  }
+
+  @DeleteMapping("/slots/{id}")
+  @PreAuthorize(
+      "hasAnyRole('DOCTOR','DIETITIAN','RECEPTION_STAFF','SYSTEM_ADMIN','MEDICAL_CENTER_COORDINATOR')")
+  @ResponseStatus(HttpStatus.NO_CONTENT)
+  public void deleteSlot(Authentication authentication, @PathVariable String id) {
+    SlotView existing = loadSlot(id);
+    requireSlotManageAccess(authentication, existing.practitionerId());
+    if (!"AVAILABLE".equals(existing.status())) {
+      throw new IllegalStateException("Only available slots can be removed");
+    }
+    int deleted =
+        jdbc.update("DELETE FROM availability_slots WHERE id = ? AND status = 'AVAILABLE'", id);
+    if (deleted == 0) {
+      throw new IllegalStateException("Only available slots can be removed");
+    }
+  }
+
   @GetMapping("/summary")
   public Map<String, Object> summary(Principal principal, Authentication authentication) {
     List<AppointmentView> visibleAppointments = appointments(authentication);
@@ -155,6 +250,112 @@ public class WorkspaceController {
         confirmed,
         "outstanding",
         outstanding);
+  }
+
+  private SlotView loadSlot(String id) {
+    List<SlotView> rows =
+        jdbc.query(
+            """
+            SELECT s.id, s.practitioner_id, u.full_name practitioner_name,
+                   s.start_time, s.duration_minutes, s.status
+            FROM availability_slots s
+            JOIN user_accounts u ON u.id = s.practitioner_id
+            WHERE s.id = ?
+            """,
+            (row, ignored) ->
+                new SlotView(
+                    row.getString("id"),
+                    row.getString("practitioner_id"),
+                    row.getString("practitioner_name"),
+                    toDateTime(row.getTimestamp("start_time")),
+                    row.getInt("duration_minutes"),
+                    row.getString("status")),
+            id);
+    if (rows.isEmpty()) {
+      throw new IllegalArgumentException("Slot not found");
+    }
+    return rows.get(0);
+  }
+
+
+  private void assertNoOverlap(
+      String practitionerId, LocalDateTime start, int durationMinutes, String excludeId) {
+    LocalDateTime end = start.plusMinutes(durationMinutes);
+    Integer conflict;
+    if (excludeId == null || excludeId.isBlank()) {
+      conflict =
+          jdbc.queryForObject(
+              """
+              SELECT COUNT(*) FROM availability_slots
+              WHERE practitioner_id = ?
+                AND start_time < ?
+                AND DATE_ADD(start_time, INTERVAL duration_minutes MINUTE) > ?
+              """,
+              Integer.class,
+              practitionerId,
+              Timestamp.valueOf(end),
+              Timestamp.valueOf(start));
+    } else {
+      conflict =
+          jdbc.queryForObject(
+              """
+              SELECT COUNT(*) FROM availability_slots
+              WHERE practitioner_id = ?
+                AND id <> ?
+                AND start_time < ?
+                AND DATE_ADD(start_time, INTERVAL duration_minutes MINUTE) > ?
+              """,
+              Integer.class,
+              practitionerId,
+              excludeId,
+              Timestamp.valueOf(end),
+              Timestamp.valueOf(start));
+    }
+    if (conflict != null && conflict > 0) {
+      throw new IllegalArgumentException(
+          "This time overlaps another open slot for this practitioner. Pick a start time after the existing slot ends.");
+    }
+  }
+  private void ensurePractitioner(String practitionerId) {
+    Integer count =
+        jdbc.queryForObject(
+            """
+            SELECT COUNT(*) FROM user_accounts
+            WHERE id = ? AND enabled = TRUE AND role IN ('DOCTOR','DIETITIAN')
+            """,
+            Integer.class,
+            practitionerId);
+    if (count == null || count == 0) {
+      throw new IllegalArgumentException("Practitioner account was not found");
+    }
+  }
+
+  private void requireSlotManageAccess(Authentication authentication, String practitionerId) {
+    String role = roleOf(authentication);
+    if (("DOCTOR".equals(role) || "DIETITIAN".equals(role))
+        && !authentication.getName().equals(practitionerId)) {
+      throw new AccessDeniedException("You can only manage your own availability");
+    }
+  }
+
+  private LocalDateTime requireFutureStart(LocalDateTime start) {
+    if (start == null) {
+      throw new IllegalArgumentException("Start time is required");
+    }
+    if (start.isBefore(LocalDateTime.now().minusMinutes(1))) {
+      throw new IllegalArgumentException("Slot start time must be in the future");
+    }
+    return start;
+  }
+
+  private void validateDuration(int durationMinutes) {
+    if (durationMinutes < 15 || durationMinutes > 240) {
+      throw new IllegalArgumentException("Duration must be between 15 and 240 minutes");
+    }
+  }
+
+  private String roleOf(Authentication authentication) {
+    return authentication.getAuthorities().iterator().next().getAuthority().replace("ROLE_", "");
   }
 
   private LocalDateTime toDateTime(Timestamp timestamp) {
@@ -183,4 +384,9 @@ public class WorkspaceController {
       LocalDateTime startTime,
       int durationMinutes,
       String status) {}
+
+  public record CreateSlotRequest(
+      String practitionerId, LocalDateTime startTime, Integer durationMinutes) {}
+
+  public record UpdateSlotRequest(LocalDateTime startTime, Integer durationMinutes) {}
 }

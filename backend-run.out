@@ -1,0 +1,85 @@
+[INFO] Scanning for projects...
+[INFO] 
+[INFO] --------------< lk.sliit.nutricare:nutricare-application >--------------
+[INFO] Building NutriCare Application 1.0.0
+[INFO]   from pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] >>> spring-boot:3.2.5:run (default-cli) > test-compile @ nutricare-application >>>
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ nutricare-application ---
+[INFO] Copying 1 resource from src\main\resources to target\classes
+[INFO] Copying 7 resources from src\main\resources to target\classes
+[INFO] 
+[INFO] --- compiler:3.11.0:compile (default-compile) @ nutricare-application ---
+[INFO] Nothing to compile - all classes are up to date
+[INFO] 
+[INFO] --- resources:3.3.1:testResources (default-testResources) @ nutricare-application ---
+[INFO] skip non existing resourceDirectory D:\SLIIT\projectr\Web_project\backend\src\test\resources
+[INFO] 
+[INFO] --- compiler:3.11.0:testCompile (default-testCompile) @ nutricare-application ---
+[INFO] Nothing to compile - all classes are up to date
+[INFO] 
+[INFO] <<< spring-boot:3.2.5:run (default-cli) < test-compile @ nutricare-application <<<
+[INFO] 
+[INFO] 
+[INFO] --- spring-boot:3.2.5:run (default-cli) @ nutricare-application ---
+[INFO] Attaching agents: []
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+ :: Spring Boot ::                (v3.2.5)
+
+2026-09-15T09:47:03.101+05:30  INFO 22692 --- [nutricare-connect] [           main] l.sliit.nutricare.NutriCareApplication   : Starting NutriCareApplication using Java 24.0.1 with PID 22692 (D:\SLIIT\projectr\Web_project\backend\target\classes started by herat in D:\SLIIT\projectr\Web_project\backend)
+2026-09-15T09:47:03.106+05:30  INFO 22692 --- [nutricare-connect] [           main] l.sliit.nutricare.NutriCareApplication   : No active profile set, falling back to 1 default profile: "default"
+2026-09-15T09:47:04.202+05:30  INFO 22692 --- [nutricare-connect] [           main] .s.d.r.c.RepositoryConfigurationDelegate : Bootstrapping Spring Data JPA repositories in DEFAULT mode.
+2026-09-15T09:47:04.331+05:30  INFO 22692 --- [nutricare-connect] [           main] .s.d.r.c.RepositoryConfigurationDelegate : Finished Spring Data repository scanning in 121 ms. Found 17 JPA repository interfaces.
+WARNING: A restricted method in java.lang.System has been called
+WARNING: java.lang.System::load has been called by org.apache.tomcat.jni.Library in an unnamed module (file:/C:/Users/herat/.m2/repository/org/apache/tomcat/embed/tomcat-embed-core/10.1.20/tomcat-embed-core-10.1.20.jar)
+WARNING: Use --enable-native-access=ALL-UNNAMED to avoid a warning for callers in this module
+WARNING: Restricted methods will be blocked in a future release unless native access is enabled
+
+2026-09-15T09:47:07.805+05:30  INFO 22692 --- [nutricare-connect] [           main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat initialized with port 8080 (http)
+2026-09-15T09:47:07.841+05:30  INFO 22692 --- [nutricare-connect] [           main] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
+2026-09-15T09:47:07.884+05:30  INFO 22692 --- [nutricare-connect] [           main] o.apache.catalina.core.StandardEngine    : Starting Servlet engine: [Apache Tomcat/10.1.20]
+2026-09-15T09:47:08.065+05:30  INFO 22692 --- [nutricare-connect] [           main] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring embedded WebApplicationContext
+2026-09-15T09:47:08.066+05:30  INFO 22692 --- [nutricare-connect] [           main] w.s.c.ServletWebServerApplicationContext : Root WebApplicationContext: initialization completed in 4898 ms
+2026-09-15T09:47:08.201+05:30  INFO 22692 --- [nutricare-connect] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Starting...
+2026-09-15T09:47:10.290+05:30  INFO 22692 --- [nutricare-connect] [           main] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Added connection com.mysql.cj.jdbc.ConnectionImpl@7eb27768
+2026-09-15T09:47:10.301+05:30  INFO 22692 --- [nutricare-connect] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Start completed.
+2026-09-15T09:47:10.865+05:30  INFO 22692 --- [nutricare-connect] [           main] o.f.c.internal.license.VersionPrinter    : Flyway Community Edition 9.22.3 by Redgate
+2026-09-15T09:47:10.866+05:30  INFO 22692 --- [nutricare-connect] [           main] o.f.c.internal.license.VersionPrinter    : See release notes here: https://rd.gt/416ObMi
+2026-09-15T09:47:10.867+05:30  INFO 22692 --- [nutricare-connect] [           main] o.f.c.internal.license.VersionPrinter    : 
+2026-09-15T09:47:10.905+05:30  INFO 22692 --- [nutricare-connect] [           main] org.flywaydb.core.FlywayExecutor         : Database: jdbc:mysql://localhost:3306/nutricare (MySQL 8.0)
+2026-09-15T09:47:11.131+05:30  INFO 22692 --- [nutricare-connect] [           main] o.f.core.internal.command.DbValidate     : Successfully validated 13 migrations (execution time 00:00.189s)
+2026-09-15T09:47:11.151+05:30  INFO 22692 --- [nutricare-connect] [           main] o.f.core.internal.command.DbMigrate      : Current version of schema `nutricare`: 13
+2026-09-15T09:47:11.155+05:30  INFO 22692 --- [nutricare-connect] [           main] o.f.core.internal.command.DbMigrate      : Schema `nutricare` is up to date. No migration necessary.
+2026-09-15T09:47:11.315+05:30  INFO 22692 --- [nutricare-connect] [           main] o.hibernate.jpa.internal.util.LogHelper  : HHH000204: Processing PersistenceUnitInfo [name: default]
+2026-09-15T09:47:11.418+05:30  INFO 22692 --- [nutricare-connect] [           main] org.hibernate.Version                    : HHH000412: Hibernate ORM core version 6.4.4.Final
+2026-09-15T09:47:11.538+05:30  INFO 22692 --- [nutricare-connect] [           main] o.h.c.internal.RegionFactoryInitiator    : HHH000026: Second-level cache disabled
+2026-09-15T09:47:12.064+05:30  INFO 22692 --- [nutricare-connect] [           main] o.s.o.j.p.SpringPersistenceUnitInfo      : No LoadTimeWeaver setup: ignoring JPA class transformer
+2026-09-15T09:47:12.391+05:30  WARN 22692 --- [nutricare-connect] [           main] org.hibernate.orm.incubating             : HHH90006001: Encountered incubating setting [hibernate.type.preferred_uuid_jdbc_type].  See javadoc on corresponding `org.hibernate.cfg.AvailableSettings` constant for details.
+2026-09-15T09:47:13.069+05:30  WARN 22692 --- [nutricare-connect] [           main] org.hibernate.orm.incubating             : HHH90006001: Encountered incubating setting [hibernate.type.preferred_uuid_jdbc_type].  See javadoc on corresponding `org.hibernate.cfg.AvailableSettings` constant for details.
+2026-09-15T09:47:23.488+05:30  INFO 22692 --- [nutricare-connect] [           main] o.h.e.t.j.p.i.JtaPlatformInitiator       : HHH000489: No JTA platform available (set 'hibernate.transaction.jta.platform' to enable JTA platform integration)
+2026-09-15T09:47:23.600+05:30  INFO 22692 --- [nutricare-connect] [           main] j.LocalContainerEntityManagerFactoryBean : Initialized JPA EntityManagerFactory for persistence unit 'default'
+2026-09-15T09:47:24.268+05:30  INFO 22692 --- [nutricare-connect] [           main] o.s.d.j.r.query.QueryEnhancerFactory     : Hibernate is in classpath; If applicable, HQL parser will be used.
+2026-09-15T09:47:25.773+05:30  INFO 22692 --- [nutricare-connect] [           main] l.s.n.health.PatientGuideService         : NutriGuide model=gemini-3.5-flash-lite aiConfigured=true
+2026-09-15T09:47:26.120+05:30  WARN 22692 --- [nutricare-connect] [           main] .s.s.UserDetailsServiceAutoConfiguration : 
+
+Using generated security password: a4aef767-fbbe-4ee9-9d87-6d15b446992c
+
+This generated password is for development use only. Your security configuration must be updated before running your application in production.
+
+2026-09-15T09:47:26.487+05:30  INFO 22692 --- [nutricare-connect] [           main] o.s.s.web.DefaultSecurityFilterChain     : Will secure any request with [org.springframework.security.web.session.DisableEncodeUrlFilter@759fe679, org.springframework.security.web.context.request.async.WebAsyncManagerIntegrationFilter@7056cda8, org.springframework.security.web.context.SecurityContextHolderFilter@751f445a, org.springframework.security.web.header.HeaderWriterFilter@1c93f349, org.springframework.web.filter.CorsFilter@2fbbdca, org.springframework.security.web.authentication.logout.LogoutFilter@18ee9a8f, lk.sliit.nutricare.access.BearerFilter@6f2b608e, org.springframework.security.web.savedrequest.RequestCacheAwareFilter@42ae0fcf, org.springframework.security.web.servletapi.SecurityContextHolderAwareRequestFilter@5e16e521, org.springframework.security.web.authentication.AnonymousAuthenticationFilter@722a2ba2, org.springframework.security.web.session.SessionManagementFilter@5503e208, org.springframework.security.web.access.ExceptionTranslationFilter@6e5dc02d, org.springframework.security.web.access.intercept.AuthorizationFilter@2044a11b]
+2026-09-15T09:47:26.968+05:30  INFO 22692 --- [nutricare-connect] [           main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat started on port 8080 (http) with context path ''
+2026-09-15T09:47:26.983+05:30  INFO 22692 --- [nutricare-connect] [           main] l.sliit.nutricare.NutriCareApplication   : Started NutriCareApplication in 24.475 seconds (process running for 24.921)
+2026-09-15T09:47:29.603+05:30  INFO 22692 --- [nutricare-connect] [nio-8080-exec-1] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring DispatcherServlet 'dispatcherServlet'
+2026-09-15T09:47:29.604+05:30  INFO 22692 --- [nutricare-connect] [nio-8080-exec-1] o.s.web.servlet.DispatcherServlet        : Initializing Servlet 'dispatcherServlet'
+2026-09-15T09:47:29.607+05:30  INFO 22692 --- [nutricare-connect] [nio-8080-exec-1] o.s.web.servlet.DispatcherServlet        : Completed initialization in 1 ms
+2026-09-15T10:28:41.364+05:30  WARN 22692 --- [nutricare-connect] [l-1 housekeeper] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Thread starvation or clock leap detected (housekeeper delta=5m4s878ms670µs400ns).
+2026-09-15T10:43:08.075+05:30  WARN 22692 --- [nutricare-connect] [nio-8080-exec-1] o.h.engine.jdbc.spi.SqlExceptionHelper   : SQL Error: 1264, SQLState: 22001
+2026-09-15T10:43:08.077+05:30 ERROR 22692 --- [nutricare-connect] [nio-8080-exec-1] o.h.engine.jdbc.spi.SqlExceptionHelper   : Data truncation: Out of range value for column 'temperature' at row 1

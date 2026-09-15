@@ -48,7 +48,7 @@ public class SecurityConfig {
                 Stream.of("http://localhost:[*]", "http://127.0.0.1:[*]"))
             .distinct()
             .toList());
-    configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "OPTIONS"));
+    configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
     configuration.setAllowedHeaders(List.of("*"));
     UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
     source.registerCorsConfiguration("/**", configuration);
@@ -126,3 +126,4 @@ class BearerFilter extends OncePerRequestFilter {
     chain.doFilter(request, response);
   }
 }
+

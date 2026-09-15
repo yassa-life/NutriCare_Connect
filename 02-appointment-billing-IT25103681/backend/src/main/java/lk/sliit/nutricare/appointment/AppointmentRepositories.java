@@ -15,6 +15,21 @@ interface SlotRepository extends JpaRepository<AvailabilitySlot, UUID> {
       LocalDateTime from, LocalDateTime to);
 
   List<AvailabilitySlot> findByStatusAndHoldExpiresAtBefore(String status, Instant now);
+  @Query(
+      value =
+          """
+          SELECT COUNT(*) FROM availability_slots
+          WHERE practitioner_id = :practitionerId
+            AND (:excludeId IS NULL OR id <> :excludeId)
+            AND start_time < :newEnd
+            AND DATE_ADD(start_time, INTERVAL duration_minutes MINUTE) > :newStart
+          """,
+      nativeQuery = true)
+  long countOverlapping(
+      @Param("practitionerId") String practitionerId,
+      @Param("newStart") LocalDateTime newStart,
+      @Param("newEnd") LocalDateTime newEnd,
+      @Param("excludeId") UUID excludeId);
 }
 
 interface AppointmentRepository extends JpaRepository<Appointment, UUID> {
@@ -23,6 +38,8 @@ interface AppointmentRepository extends JpaRepository<Appointment, UUID> {
   List<Appointment> findByPractitionerId(String practitionerId);
 
   Optional<Appointment> findBySlotId(UUID slotId);
+
+  List<Appointment> findBySlotIdAndStatus(UUID slotId, String status);
 }
 
 interface InvoiceRepository extends JpaRepository<Invoice, UUID> {

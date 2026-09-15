@@ -6,15 +6,18 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -41,10 +44,45 @@ public class AppointmentController {
         date.atStartOfDay(), date.plusDays(1).atStartOfDay());
   }
 
+  @PostMapping("/schedules/slots")
+  @PreAuthorize(
+      "hasAnyRole('DOCTOR','DIETITIAN','RECEPTION_STAFF','SYSTEM_ADMIN','MEDICAL_CENTER_COORDINATOR')")
+  @ResponseStatus(HttpStatus.CREATED)
+  AvailabilitySlot createSlot(
+      Authentication authentication, @Valid @RequestBody CreateSlotRequest request) {
+    String practitionerId = resolvePractitionerForCreate(authentication, request.practitionerId());
+    int duration = request.durationMinutes() == null ? 60 : request.durationMinutes();
+    return service.createSlot(practitionerId, request.startTime(), duration);
+  }
+
+  @PutMapping("/schedules/slots/{id}")
+  @PreAuthorize(
+      "hasAnyRole('DOCTOR','DIETITIAN','RECEPTION_STAFF','SYSTEM_ADMIN','MEDICAL_CENTER_COORDINATOR')")
+  AvailabilitySlot updateSlot(
+      Authentication authentication,
+      @PathVariable UUID id,
+      @Valid @RequestBody UpdateSlotRequest request) {
+    AvailabilitySlot existing = service.requireSlot(id);
+    requireSlotManageAccess(authentication, existing.getPractitionerId());
+    int duration =
+        request.durationMinutes() == null ? existing.getDurationMinutes() : request.durationMinutes();
+    return service.updateSlot(id, request.startTime(), duration);
+  }
+
+  @DeleteMapping("/schedules/slots/{id}")
+  @PreAuthorize(
+      "hasAnyRole('DOCTOR','DIETITIAN','RECEPTION_STAFF','SYSTEM_ADMIN','MEDICAL_CENTER_COORDINATOR')")
+  @ResponseStatus(HttpStatus.NO_CONTENT)
+  void deleteSlot(Authentication authentication, @PathVariable UUID id) {
+    AvailabilitySlot existing = service.requireSlot(id);
+    requireSlotManageAccess(authentication, existing.getPractitionerId());
+    service.deleteSlot(id);
+  }
+
   @PostMapping("/appointments/hold")
   @PreAuthorize(
-      "hasRole('RECEPTION_STAFF') or (hasRole('PATIENT') and principal =="
-          + " #request.patientId.toString())")
+      "hasAnyRole('RECEPTION_STAFF','SYSTEM_ADMIN','MEDICAL_CENTER_COORDINATOR') or"
+          + " (hasRole('PATIENT') and principal == #request.patientId.toString())")
   @ResponseStatus(HttpStatus.CREATED)
   AppointmentService.Booking hold(@Valid @RequestBody HoldRequest request) {
     return service.hold(
@@ -52,7 +90,8 @@ public class AppointmentController {
   }
 
   @PostMapping("/appointments/{id}/payments")
-  @PreAuthorize("hasAnyRole('PATIENT','RECEPTION_STAFF','FINANCE_EXECUTIVE')")
+  @PreAuthorize(
+      "hasAnyRole('PATIENT','RECEPTION_STAFF','FINANCE_EXECUTIVE','SYSTEM_ADMIN')")
   @ResponseStatus(HttpStatus.CREATED)
   Payment pay(
       Authentication authentication,
@@ -63,9 +102,10 @@ public class AppointmentController {
   }
 
   @PostMapping("/appointments/{id}/cancel")
-  @PreAuthorize("hasAnyRole('PATIENT','RECEPTION_STAFF')")
+  @PreAuthorize(
+      "hasAnyRole('PATIENT','RECEPTION_STAFF','DOCTOR','DIETITIAN','SYSTEM_ADMIN','MEDICAL_CENTER_COORDINATOR')")
   void cancel(Authentication authentication, @PathVariable UUID id) {
-    requirePatientOwnership(authentication, id);
+    requireCancelAccess(authentication, id);
     service.cancel(id);
   }
 
@@ -76,16 +116,58 @@ public class AppointmentController {
     return appointments.findByPatientId(patientId);
   }
 
-  private void requirePatientOwnership(Authentication authentication, UUID appointmentId) {
-    boolean patient =
-        authentication.getAuthorities().stream()
-            .anyMatch(authority -> authority.getAuthority().equals("ROLE_PATIENT"));
-    if (patient) {
-      Appointment appointment = appointments.findById(appointmentId).orElseThrow();
-      if (!appointment.getPatientId().equals(authentication.getName()))
-        throw new AccessDeniedException("Patient record is not owned by this account");
+  private String resolvePractitionerForCreate(Authentication authentication, String requested) {
+    String role = roleOf(authentication);
+    if ("DOCTOR".equals(role) || "DIETITIAN".equals(role)) {
+      return authentication.getName();
+    }
+    if (requested == null || requested.isBlank()) {
+      throw new IllegalArgumentException("Select a practitioner for the slot");
+    }
+    return requested;
+  }
+
+  private void requireSlotManageAccess(Authentication authentication, String practitionerId) {
+    String role = roleOf(authentication);
+    if ("DOCTOR".equals(role) || "DIETITIAN".equals(role)) {
+      if (!authentication.getName().equals(practitionerId)) {
+        throw new AccessDeniedException("You can only manage your own availability");
+      }
     }
   }
+
+  private void requirePatientOwnership(Authentication authentication, UUID appointmentId) {
+    if ("PATIENT".equals(roleOf(authentication))) {
+      Appointment appointment = service.requireAppointment(appointmentId);
+      if (!appointment.getPatientId().equals(authentication.getName())) {
+        throw new AccessDeniedException("Patient record is not owned by this account");
+      }
+    }
+  }
+
+  private void requireCancelAccess(Authentication authentication, UUID appointmentId) {
+    String role = roleOf(authentication);
+    Appointment appointment = service.requireAppointment(appointmentId);
+    if ("PATIENT".equals(role) && !appointment.getPatientId().equals(authentication.getName())) {
+      throw new AccessDeniedException("Patient record is not owned by this account");
+    }
+    if (("DOCTOR".equals(role) || "DIETITIAN".equals(role))
+        && !appointment.getPractitionerId().equals(authentication.getName())) {
+      throw new AccessDeniedException("Appointment is not assigned to this practitioner");
+    }
+  }
+
+  private String roleOf(Authentication authentication) {
+    return authentication.getAuthorities().iterator().next().getAuthority().replace("ROLE_", "");
+  }
+
+  record CreateSlotRequest(
+      String practitionerId,
+      @NotNull LocalDateTime startTime,
+      Integer durationMinutes) {}
+
+  record UpdateSlotRequest(
+      @NotNull LocalDateTime startTime, Integer durationMinutes) {}
 
   record HoldRequest(
       @NotNull UUID slotId,

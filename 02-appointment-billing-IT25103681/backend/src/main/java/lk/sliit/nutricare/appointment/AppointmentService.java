@@ -2,8 +2,10 @@ package lk.sliit.nutricare.appointment;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.Set;
 import java.util.UUID;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -32,6 +34,44 @@ public class AppointmentService {
   }
 
   @Transactional
+  public AvailabilitySlot createSlot(
+      String practitionerId, LocalDateTime start, int durationMinutes) {
+    validateSlotTiming(start, durationMinutes);
+    assertNoOverlap(practitionerId, start, durationMinutes, null);
+    try {
+      return slots.save(new AvailabilitySlot(practitionerId, start, durationMinutes));
+    } catch (DataIntegrityViolationException ex) {
+      throw new IllegalArgumentException(
+          "This time overlaps another open slot for this practitioner");
+    }
+  }
+
+  @Transactional
+  public AvailabilitySlot updateSlot(UUID slotId, LocalDateTime start, int durationMinutes) {
+    validateSlotTiming(start, durationMinutes);
+    AvailabilitySlot slot =
+        slots.findById(slotId).orElseThrow(() -> new IllegalArgumentException("Slot not found"));
+    assertNoOverlap(slot.getPractitionerId(), start, durationMinutes, slotId);
+    try {
+      slot.reschedule(start, durationMinutes);
+      return slot;
+    } catch (DataIntegrityViolationException ex) {
+      throw new IllegalArgumentException(
+          "This time overlaps another open slot for this practitioner");
+    }
+  }
+
+  @Transactional
+  public void deleteSlot(UUID slotId) {
+    AvailabilitySlot slot =
+        slots.findById(slotId).orElseThrow(() -> new IllegalArgumentException("Slot not found"));
+    if (!"AVAILABLE".equals(slot.getStatus())) {
+      throw new IllegalStateException("Only available slots can be removed");
+    }
+    slots.delete(slot);
+  }
+
+  @Transactional
   public Booking hold(UUID slotId, String patientId, String service, BigDecimal amount) {
     AvailabilitySlot slot =
         slots
@@ -48,6 +88,9 @@ public class AppointmentService {
     validatePayment(method, status);
 
     Appointment appointment = appointments.findById(appointmentId).orElseThrow();
+    if ("CANCELLED".equals(appointment.getStatus()) || "EXPIRED".equals(appointment.getStatus())) {
+      throw new IllegalStateException("Cancelled or expired appointments cannot be paid");
+    }
     Invoice invoice = invoices.findByAppointmentId(appointmentId).orElseThrow();
     Payment payment = payments.save(new Payment(invoice.getId(), amount, method, status));
 
@@ -63,19 +106,56 @@ public class AppointmentService {
   @Transactional
   public void cancel(UUID appointmentId) {
     Appointment appointment = appointments.findById(appointmentId).orElseThrow();
+    if ("CANCELLED".equals(appointment.getStatus())) {
+      return;
+    }
+    if ("EXPIRED".equals(appointment.getStatus())) {
+      throw new IllegalStateException("Expired appointments cannot be cancelled");
+    }
     appointment.cancel();
     slots.findForUpdate(appointment.getSlotId()).ifPresent(AvailabilitySlot::release);
+    invoices
+        .findByAppointmentId(appointmentId)
+        .ifPresent(invoice -> invoice.setStatus("CANCELLED"));
   }
 
   @Scheduled(fixedDelay = 60000)
   @Transactional
   public void releaseExpired() {
     for (AvailabilitySlot slot : slots.findByStatusAndHoldExpiresAtBefore("HELD", Instant.now())) {
-      appointments
-          .findBySlotId(slot.getId())
-          .filter(appointment -> "HELD".equals(appointment.getStatus()))
-          .ifPresent(Appointment::expire);
+      appointments.findBySlotIdAndStatus(slot.getId(), "HELD").forEach(Appointment::expire);
       slot.release();
+    }
+  }
+
+  public AvailabilitySlot requireSlot(UUID slotId) {
+    return slots.findById(slotId).orElseThrow(() -> new IllegalArgumentException("Slot not found"));
+  }
+
+  public Appointment requireAppointment(UUID appointmentId) {
+    return appointments
+        .findById(appointmentId)
+        .orElseThrow(() -> new IllegalArgumentException("Appointment not found"));
+  }
+
+
+  private void assertNoOverlap(
+      String practitionerId, LocalDateTime start, int durationMinutes, UUID excludeId) {
+    LocalDateTime end = start.plusMinutes(durationMinutes);
+    if (slots.countOverlapping(practitionerId, start, end, excludeId) > 0) {
+      throw new IllegalArgumentException(
+          "This time overlaps another open slot for this practitioner. Pick a start time after the existing slot ends.");
+    }
+  }
+  private void validateSlotTiming(LocalDateTime start, int durationMinutes) {
+    if (start == null) {
+      throw new IllegalArgumentException("Start time is required");
+    }
+    if (start.isBefore(LocalDateTime.now().minusMinutes(1))) {
+      throw new IllegalArgumentException("Slot start time must be in the future");
+    }
+    if (durationMinutes < 15 || durationMinutes > 240) {
+      throw new IllegalArgumentException("Duration must be between 15 and 240 minutes");
     }
   }
 
