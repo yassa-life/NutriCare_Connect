@@ -15,6 +15,7 @@ spring:
       hibernate:
         type:
           preferred_uuid_jdbc_type: VARCHAR
+          preferred_instant_jdbc_type: TIMESTAMP
         jdbc:
           time_zone: Asia/Colombo
   flyway:

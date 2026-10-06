@@ -129,6 +129,7 @@ function downloadOrPrintInvoicePDF(inv: WorkspaceInvoice) {
 
 export function UserAccessFeature({
   initialTab = "users",
+  patientOnly = false,
   isAdmin = false,
   onProvision,
   onLoadUsers,
@@ -141,6 +142,7 @@ export function UserAccessFeature({
   onLoadAppointments,
 }: {
   initialTab?: "users" | "invoices";
+  patientOnly?: boolean;
   isAdmin?: boolean;
   onProvision?: (details: { fullName: string; email: string; role: StaffRole }) => Promise<ProvisionResult>;
   onLoadUsers?: () => Promise<DemoUser[]>;
@@ -152,7 +154,7 @@ export function UserAccessFeature({
   onDeleteInvoice?: (id: string) => Promise<void>;
   onLoadAppointments?: () => Promise<WorkspaceAppointment[]>;
 }) {
-  const [activeTab, setActiveTab] = useState<"users" | "invoices">(initialTab);
+  const [activeTab, setActiveTab] = useState<"users" | "invoices">(patientOnly ? "invoices" : initialTab);
   const [users, setUsers] = useState<DemoUser[]>([]);
   const [invoices, setInvoices] = useState<WorkspaceInvoice[]>([]);
   const [appointments, setAppointments] = useState<WorkspaceAppointment[]>([]);
@@ -163,7 +165,11 @@ export function UserAccessFeature({
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    if (onLoadUsers) {
+    setActiveTab(patientOnly ? "invoices" : initialTab);
+  }, [initialTab, patientOnly]);
+
+  useEffect(() => {
+    if (onLoadUsers && !patientOnly) {
       onLoadUsers().then(setUsers).catch((reason) => setMessage(reason instanceof Error ? reason.message : "Users could not be loaded."));
     }
     if (onLoadInvoices) {
@@ -172,7 +178,7 @@ export function UserAccessFeature({
     if (onLoadAppointments) {
       onLoadAppointments().then(setAppointments).catch(() => undefined);
     }
-  }, [activeTab, onLoadAppointments, onLoadInvoices, onLoadUsers, showCreateInvoice]);
+  }, [activeTab, onLoadAppointments, onLoadInvoices, onLoadUsers, patientOnly, showCreateInvoice]);
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -269,17 +275,19 @@ export function UserAccessFeature({
       <div className="page-heading">
         <div>
           <span className="eyebrow">Module 01 · IT25101803</span>
-          <h1>Patients & access</h1>
-          <p>Manage user registration, profiles, account deletion, and invoice billing.</p>
+          <h1>{patientOnly ? "Invoices & billing" : "Patients & access"}</h1>
+          <p>{patientOnly ? "View and download your medical invoices and billing records." : "Manage user registration, profiles, account deletion, and invoice billing."}</p>
         </div>
         <div className="chip-row">
-          <button
-            type="button"
-            className={activeTab === "users" ? "chip active" : "chip"}
-            onClick={() => setActiveTab("users")}
-          >
-            <Users size={14}/> Users directory ({users.length})
-          </button>
+          {!patientOnly && (
+            <button
+              type="button"
+              className={activeTab === "users" ? "chip active" : "chip"}
+              onClick={() => setActiveTab("users")}
+            >
+              <Users size={14}/> Users directory ({users.length})
+            </button>
+          )}
           <button
             type="button"
             className={activeTab === "invoices" ? "chip active" : "chip"}
@@ -292,7 +300,7 @@ export function UserAccessFeature({
 
       {message && <div className="success-note">{message}</div>}
 
-      {activeTab === "users" && (
+      {!patientOnly && activeTab === "users" && (
         <div className="feature-grid">
           <section className="panel">
             <div className="panel-title">

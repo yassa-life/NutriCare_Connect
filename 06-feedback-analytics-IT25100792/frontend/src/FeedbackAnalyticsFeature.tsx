@@ -77,12 +77,14 @@ export function FeedbackAnalyticsFeature({
   const COMMENT_MIN_LOW = 10;
 
   const range = useMemo(() => {
+    const fmt = (d: Date) =>
+      `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
     const to = new Date();
     const from = new Date();
     from.setMonth(from.getMonth() - 3);
     return {
-      from: from.toISOString().slice(0, 10),
-      to: to.toISOString().slice(0, 10),
+      from: fmt(from),
+      to: fmt(to),
     };
   }, []);
 
